@@ -1,0 +1,13 @@
+package com.example.myapplication.xstore.streaming;
+
+public class BalanceSubscribe extends RecordSubscribe {
+
+    public BalanceSubscribe(String streamSessionId) {
+    	super(streamSessionId);
+    }
+
+	@Override
+	public String getCommand() {
+		return "getBalance";
+	}
+}
