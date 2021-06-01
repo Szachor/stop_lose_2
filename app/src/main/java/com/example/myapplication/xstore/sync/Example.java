@@ -19,7 +19,7 @@ public class Example {
 		this.c = c;
 	}
 
-	public void runExample(ServerEnum server, Credentials credentials) throws Exception {
+	public void runExample(ServerEnum server, Credentials credentials, String instrument) throws Exception {
 		try {
 			SyncAPIConnector connector = new SyncAPIConnector(server);
 			LoginResponse loginResponse = APICommandFactory.executeLoginCommand(connector, credentials);
@@ -30,11 +30,10 @@ public class Example {
 				};
 
 				LinkedList<String> list = new LinkedList<String>();
-				String symbol = "DE30";
+				//String symbol = "DE30";
+				String symbol = instrument;
 				list.add(symbol);
-				list.add("EURUSD");
-				list.add("EURGBP");
-				list.add("EURJPY");
+				//list.add("EURUSD");
 
 				TickPricesResponse resp = APICommandFactory.executeTickPricesCommand(connector, 0L, list, 0L);
 				for (TickRecord tr : resp.getTicks()) {

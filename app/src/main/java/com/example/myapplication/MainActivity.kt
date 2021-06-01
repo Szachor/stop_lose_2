@@ -9,9 +9,6 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.example.myapplication.databinding.ActivityMainBinding
-import com.example.myapplication.xstore.sync.Credentials
-import com.example.myapplication.xstore.sync.Example
-import com.example.myapplication.xstore.sync.ServerData
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -33,21 +30,9 @@ class MainActivity : AppCompatActivity() {
 
         binding.fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
+                .setAction("Action", null).show()
         }
 
-
-
-
-        val runnable = Runnable {
-            val context = this.applicationContext
-            val credentials = Credentials(
-                "12263751","xoh26561"
-            )
-            val ex = Example(context)
-            ex.runExample(ServerData.ServerEnum.DEMO, credentials)
-        }
-        Thread(runnable).start()
 
     }
 
