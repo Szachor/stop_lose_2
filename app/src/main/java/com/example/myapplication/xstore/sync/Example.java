@@ -30,10 +30,8 @@ public class Example {
 				};
 
 				LinkedList<String> list = new LinkedList<String>();
-				//String symbol = "DE30";
 				String symbol = instrument;
 				list.add(symbol);
-				//list.add("EURUSD");
 
 				TickPricesResponse resp = APICommandFactory.executeTickPricesCommand(connector, 0L, list, 0L);
 				for (TickRecord tr : resp.getTicks()) {
