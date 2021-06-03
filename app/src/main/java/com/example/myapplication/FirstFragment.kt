@@ -1,6 +1,5 @@
 package com.example.myapplication
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,7 +17,7 @@ import com.example.myapplication.xstore.sync.ServerData
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
-class FirstFragment : Fragment() {
+class FirstFragment2 : Fragment() {
 
     private var _binding: FragmentFirstBinding? = null
 
@@ -26,16 +25,19 @@ class FirstFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
-    private var listItems: ArrayList<String> = ArrayList<String>()
+    private var listItems: ArrayList<String> = ArrayList()
     private lateinit var arrayAdapter: ArrayAdapter<String>
 
     override fun onResume() {
         super.onResume()
-        var preferences = PreferenceManager.getDefaultSharedPreferences(this.context)
-        var list = preferences.getStringSet("listItems", listItems.toSet())
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this.context)
+        val list = preferences.getStringSet("listItems", listItems.toSet())
         list?.forEach {
-            listItems.add(it)
-            if (!GlobalData.getInstance().runningInstruments.contains(it)){
+            if (!listItems.contains(it)) {
+                listItems.add(it)
+            }
+
+            if (!GlobalData.getInstance().runningInstruments.contains(it)) {
                 runInstrumentListening(it)
                 GlobalData.getInstance().runningInstruments.add(it)
             }
@@ -45,7 +47,7 @@ class FirstFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
         arrayAdapter = ArrayAdapter(
             this.requireContext(),
@@ -65,18 +67,18 @@ class FirstFragment : Fragment() {
 
             listItems.add(instrument)
             GlobalData.getInstance().runningInstruments.add(instrument)
-            var preferences = PreferenceManager.getDefaultSharedPreferences(this.context)
-            var editor = preferences.edit()
-            var set = listItems.toSet<String>()
+            val preferences = PreferenceManager.getDefaultSharedPreferences(this.context)
+            val editor = preferences.edit()
+            val set = listItems.toSet()
             editor.putStringSet("listItems", set)
             editor.apply()
             arrayAdapter.notifyDataSetChanged()
         }
 
-        binding.listeningList.setOnItemClickListener { parent, view, position, id ->
+        binding.listeningList.setOnItemClickListener { parent, _, position, _ ->
             print(parent.toString())
-            var clickedItem = listItems[position]
-            var b = Bundle()
+            val clickedItem = listItems[position]
+            val b = Bundle()
             b.putString("Instrument", clickedItem)
             findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, b)
         }
@@ -88,6 +90,7 @@ class FirstFragment : Fragment() {
         return binding.root
     }
 
+
     private fun runInstrumentListening(instrument: String) {
         val runnable = Runnable {
             val context = this.context
@@ -98,13 +101,6 @@ class FirstFragment : Fragment() {
             ex.runExample(ServerData.ServerEnum.DEMO, credentials, instrument)
         }
         Thread(runnable).start()
-    }
-
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-
     }
 
     override fun onDestroyView() {

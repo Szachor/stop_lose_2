@@ -19,19 +19,19 @@ public class Example {
 		this.c = c;
 	}
 
-	public void runExample(ServerEnum server, Credentials credentials, String instrument) throws Exception {
+	public void runExample(ServerEnum server, Credentials credentials, String instrument) {
 		try {
 			SyncAPIConnector connector = new SyncAPIConnector(server);
 			LoginResponse loginResponse = APICommandFactory.executeLoginCommand(connector, credentials);
 			System.out.println(loginResponse);
-			if (loginResponse != null && loginResponse.getStatus())
+
+			if (loginResponse.getStatus())
 			{
 				StreamingListener sl = new StreamingListener(this.c) {
 				};
 
-				LinkedList<String> list = new LinkedList<String>();
-				String symbol = instrument;
-				list.add(symbol);
+				LinkedList<String> list = new LinkedList<>();
+				list.add(instrument);
 
 				TickPricesResponse resp = APICommandFactory.executeTickPricesCommand(connector, 0L, list, 0L);
 				for (TickRecord tr : resp.getTicks()) {
@@ -45,24 +45,9 @@ public class Example {
 					connector.subscribePrice(l);
 				}
 				connector.subscribeKeepAlive();
-
-				Thread.sleep(10000);
-
-				//connector.unsubscribePrice(symbol);
-				//connector.unsubscribeTrades();
-				//connector.disconnectStream();
-				//System.out.println("Stream disconnected.");
-				
-				//Thread.sleep(5000);
-				
-				//connector.connectStream(sl);
-				//System.out.println("Stream connected again.");
-				//connector.disconnectStream();
-				//System.out.println("Stream disconnected again.");
-				//System.exit(0);
 			}
 		} catch (Exception ex) {
-			System.err.println(ex);
+			ex.printStackTrace();
 		}
 	}
 

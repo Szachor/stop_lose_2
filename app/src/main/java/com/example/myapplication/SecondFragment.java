@@ -1,6 +1,7 @@
 package com.example.myapplication;
 
 import android.annotation.SuppressLint;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -10,12 +11,15 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
 import com.example.myapplication.databinding.FragmentSecondBinding;
 
 import org.jetbrains.annotations.NotNull;
+
+import java.time.LocalDateTime;
 
 public class SecondFragment extends Fragment {
     private FragmentSecondBinding binding = null;
@@ -30,14 +34,11 @@ public class SecondFragment extends Fragment {
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        String clickedItem = "";
-        if (savedInstanceState != null) {
-            clickedItem = savedInstanceState.getString("Instrument");
-        }
-
+        String clickedItem;
 
         GlobalData globalDataInstance = GlobalData.getInstance();
         String newText = "";
@@ -56,33 +57,36 @@ public class SecondFragment extends Fragment {
         binding.logsContent.setText(newText);
         globalDataInstance.logInstrumentCode = clickedItem;
 
-        binding.buttonSecond.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Navigation.findNavController(v).navigate(R.id.action_SecondFragment_to_FirstFragment);
-            }
-        });
+        binding.buttonSecond.setOnClickListener(v -> Navigation.findNavController(v).navigate(R.id.action_SecondFragment_to_FirstFragment));
 
         listenLogs();
     }
 
     private String logs = "";
     private Runnable runnable;
-    private void listenLogs(){
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void listenLogs() {
         GlobalData globalDataInstance = GlobalData.getInstance();
-        Runnable runnable = () -> {
-            while(binding != null) {
+        runnable = () -> {
+            while (binding != null) {
+                String toDisplayMessage;
                 try {
                     int substring_start = Math.max(logs.length() - 1000, 0);
+                    if (substring_start > 0) {
+                        substring_start = logs.indexOf("\n", substring_start) + 1;
+                    }
                     logs = logs.substring(substring_start);
                     logs += globalDataInstance.logs.take();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                toDisplayMessage = logs + "\n Time:";
+                toDisplayMessage += LocalDateTime.now().toString();
 
                 Message msg = mHandler.obtainMessage();
                 Bundle bundle = new Bundle();
-                bundle.putString("Logs", logs);
+                bundle.putString("Logs", toDisplayMessage);
                 msg.setData(bundle);
                 mHandler.sendMessage(msg);
             }
@@ -95,8 +99,8 @@ public class SecondFragment extends Fragment {
         @Override
         public void handleMessage(Message msg) {
             try {
-                binding.logsContent.setText(logs);
-            }catch (Exception e){
+                binding.logsContent.setText(msg.getData().getString("Logs"));
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -109,4 +113,4 @@ public class SecondFragment extends Fragment {
 
         binding = null;
     }
-};
+}
