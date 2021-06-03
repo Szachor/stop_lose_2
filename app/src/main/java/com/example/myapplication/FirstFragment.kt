@@ -1,20 +1,19 @@
 package com.example.myapplication
 
-import android.content.SharedPreferences
+import android.content.Intent
 import android.os.Bundle
-import android.os.SharedMemory
-import androidx.preference.PreferenceManager
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import androidx.preference.PreferenceManager
 import com.example.myapplication.databinding.FragmentFirstBinding
 import com.example.myapplication.xstore.sync.Credentials
 import com.example.myapplication.xstore.sync.Example
 import com.example.myapplication.xstore.sync.ServerData
-import kotlin.collections.ArrayList
+
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -55,7 +54,7 @@ class FirstFragment : Fragment() {
         binding.addInstrumentButton.setOnClickListener {
             val instrument = binding.addInstrumentText.text.toString()
 
-            if(listItems.contains(instrument)){
+            if (listItems.contains(instrument)) {
                 return@setOnClickListener
             }
 
@@ -73,7 +72,9 @@ class FirstFragment : Fragment() {
         binding.listeningList.setOnItemClickListener { parent, view, position, id ->
             print(parent.toString())
             var clickedItem = listItems[position]
-            findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
+            var b = Bundle()
+            b.putString("Instrument", clickedItem)
+            findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, b)
         }
 
         binding.buttonFirst.setOnClickListener {

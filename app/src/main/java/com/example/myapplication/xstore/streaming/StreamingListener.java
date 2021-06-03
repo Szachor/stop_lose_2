@@ -11,6 +11,7 @@ import android.os.Build;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 
+import com.example.myapplication.GlobalData;
 import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.xstore.message.records.SBalanceRecord;
@@ -83,6 +84,14 @@ public class StreamingListener implements StreamingListenerInterface {
 	@Override
 	public void receiveTickRecord(STickRecord tickRecord) {
 		Intent intent = new Intent(this.c, MainActivity.class);
+		//intent.getstr
+		GlobalData globalDataInstance = GlobalData.getInstance();
+		String logInstrumentCode = globalDataInstance.logInstrumentCode;
+
+		if(logInstrumentCode.equals(tickRecord.getSymbol())){
+
+		}
+
 		PendingIntent contentIntent = PendingIntent.getActivity(this.c, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 		int r = new Random().nextInt(1000000);
 
@@ -94,22 +103,25 @@ public class StreamingListener implements StreamingListenerInterface {
 		}
 		Double askChange = oldTick.getChangeAsk(tickRecord.getAsk());
 		boolean notify = false;
+		String notificationText ="" + tickRecord.getSymbol() + ". ";
+
 		if(abs(askChange) > 1.0) {
+			notificationText += "Ask: %change " + askChange + "%. New:" + newTick.ask + ", Old: " + oldTick.ask + ".";
 			notify = true;
 		}
 
 		Double bidChange = oldTick.getChangeBid(tickRecord.getBid());
 		if(abs(bidChange) > 1.0) {
+			notificationText += "Bid: %change " + askChange + "%. New:" + newTick.bid + ", Old: " + oldTick.bid + ".";
 			notify = true;
 		}
 		if(!notify)
 			return;
+
 		NotificationCompat.Builder mBuilder =
 				new NotificationCompat.Builder(this.c, CHANNEL_ID)
 						.setSmallIcon(R.drawable.notification_icon)
-						.setContentTitle("" + tickRecord.getSymbol() + " ask: " + oldTick.ask + " -> " + newTick.ask +
-								"Change "+ askChange + "\n old bid: " + oldTick.bid + ". New bid: " + newTick.bid +
-								"Change "+ bidChange)
+						.setContentTitle(notificationText)
 						.setContentText(tickRecord.toString()); //Required on Gingerbread and below
 
 		if(notify) {
@@ -133,9 +145,6 @@ public class StreamingListener implements StreamingListenerInterface {
 
 	@Override
 	public void receiveKeepAliveRecord(SKeepAliveRecord keepAliveRecord) {
-		boolean testKeepAlive = false;
-		if (!testKeepAlive)
-			return;
 		Intent intent = new Intent(this.c, MainActivity.class);
 		PendingIntent contentIntent = PendingIntent.getActivity(this.c, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 		int r = new Random().nextInt(1000000);

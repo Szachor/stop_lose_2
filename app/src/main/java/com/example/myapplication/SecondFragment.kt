@@ -11,7 +11,7 @@ import com.example.myapplication.databinding.FragmentSecondBinding
 /**
  * A simple [Fragment] subclass as the second destination in the navigation.
  */
-class SecondFragment : Fragment() {
+class SecondFragment2 : Fragment() {
 
     private var _binding: FragmentSecondBinding? = null
 
@@ -31,6 +31,9 @@ class SecondFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        var clickedItem = savedInstanceState?.getString("Instrument")
+
+
 
         binding.buttonSecond.setOnClickListener {
             findNavController().navigate(R.id.action_SecondFragment_to_FirstFragment)
