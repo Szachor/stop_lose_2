@@ -35,7 +35,10 @@ class FirstFragment : Fragment() {
         var list = preferences.getStringSet("listItems", listItems.toSet())
         list?.forEach {
             listItems.add(it)
-            runInstrumentListening(it)
+            if (!GlobalData.getInstance().runningInstruments.contains(it)){
+                runInstrumentListening(it)
+                GlobalData.getInstance().runningInstruments.add(it)
+            }
         }
     }
 
@@ -61,6 +64,7 @@ class FirstFragment : Fragment() {
             runInstrumentListening(instrument)
 
             listItems.add(instrument)
+            GlobalData.getInstance().runningInstruments.add(instrument)
             var preferences = PreferenceManager.getDefaultSharedPreferences(this.context)
             var editor = preferences.edit()
             var set = listItems.toSet<String>()

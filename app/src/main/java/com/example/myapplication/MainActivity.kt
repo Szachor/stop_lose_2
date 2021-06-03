@@ -8,6 +8,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
+import androidx.preference.PreferenceManager
 import com.example.myapplication.databinding.ActivityMainBinding
 import com.google.android.material.snackbar.Snackbar
 
@@ -20,6 +21,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+        val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
+        val editor = preferences.edit()
+        editor.clear()
+        editor.apply()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

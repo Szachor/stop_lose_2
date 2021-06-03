@@ -1,6 +1,9 @@
 package com.example.myapplication;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -51,7 +54,6 @@ public class SecondFragment extends Fragment {
             newText += "New instrument is: " + clickedItem;
         }
         binding.logsContent.setText(newText);
-
         globalDataInstance.logInstrumentCode = clickedItem;
 
         binding.buttonSecond.setOnClickListener(new View.OnClickListener() {
@@ -60,11 +62,51 @@ public class SecondFragment extends Fragment {
                 Navigation.findNavController(v).navigate(R.id.action_SecondFragment_to_FirstFragment);
             }
         });
+
+        listenLogs();
     }
+
+    private String logs = "";
+    private Runnable runnable;
+    private void listenLogs(){
+        GlobalData globalDataInstance = GlobalData.getInstance();
+        Runnable runnable = () -> {
+            while(binding != null) {
+                try {
+                    int substring_start = Math.max(logs.length() - 1000, 0);
+                    logs = logs.substring(substring_start);
+                    logs += globalDataInstance.logs.take();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                Message msg = mHandler.obtainMessage();
+                Bundle bundle = new Bundle();
+                bundle.putString("Logs", logs);
+                msg.setData(bundle);
+                mHandler.sendMessage(msg);
+            }
+        };
+        new Thread(runnable).start();
+    }
+
+    @SuppressLint("HandlerLeak")
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            try {
+                binding.logsContent.setText(logs);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    };
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        mHandler.removeCallbacks(runnable);
+
         binding = null;
     }
 };

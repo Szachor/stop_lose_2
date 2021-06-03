@@ -1,5 +1,6 @@
 package com.example.myapplication.xstore.streaming;
 
+import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -31,149 +32,147 @@ import static java.lang.Math.abs;
 
 public class StreamingListener implements StreamingListenerInterface {
 
-	Context c;
-	String CHANNEL_ID = "my_channel_01";
+    Context c;
+    String CHANNEL_ID = "my_channel_01";
 
-	class Tick{
-		public Double ask, bid;
+    class Tick {
+        public Double ask, bid;
 
-		public Tick(Double ask, Double bid){
-			this.ask  = ask; this.bid = bid;
-		}
+        public Tick(Double ask, Double bid) {
+            this.ask = ask;
+            this.bid = bid;
+        }
 
-		public Double getChangeAsk(Double ask){
-			return (this.ask - ask)/this.ask;
-		}
-		public Double getChangeBid(Double bid){
-			return (this.bid - bid)/this.bid;
-		}
-	}
-	Map<String,Tick> symbols = new HashMap<String, Tick>();
+        public Double getChangeAsk(Double ask) {
+            return (this.ask - ask) / this.ask;
+        }
 
-	public StreamingListener(Context c) {
-		this.c = c;
-		int NOTIFICATION_ID = 234;
-		NotificationManager notificationManager = (NotificationManager) this.c.getSystemService(Context.NOTIFICATION_SERVICE);
+        public Double getChangeBid(Double bid) {
+            return (this.bid - bid) / this.bid;
+        }
+    }
 
-		this.symbols.put("EURJPY",new Tick(0.0,0.0));
-		this.symbols.put("EURUSD",new Tick(0.0,0.0));
-		this.symbols.put("EURGBP",new Tick(0.0,0.0));
+    Map<String, Tick> symbols = new HashMap<String, Tick>();
 
-		if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+    public StreamingListener(Context c) {
+        this.c = c;
+        int NOTIFICATION_ID = 234;
+        NotificationManager notificationManager = (NotificationManager) this.c.getSystemService(Context.NOTIFICATION_SERVICE);
 
-			CharSequence name = "my_channel";
-			String Description = "This is my channel";
-			int importance = NotificationManager.IMPORTANCE_HIGH;
-			NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
-			mChannel.setDescription(Description);
-			mChannel.enableLights(true);
-			mChannel.setLightColor(Color.RED);
-			mChannel.enableVibration(true);
-			mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-			mChannel.setShowBadge(false);
-			notificationManager.createNotificationChannel(mChannel);
-		}
-	}
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
 
-	@Override
-	public void receiveTradeRecord(STradeRecord tradeRecord) {
-		System.out.println(tradeRecord.toString());
-	}
+            CharSequence name = "my_channel";
+            String Description = "This is my channel";
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
+            mChannel.setDescription(Description);
+            mChannel.enableLights(true);
+            mChannel.setLightColor(Color.RED);
+            mChannel.enableVibration(true);
+            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            mChannel.setShowBadge(false);
+            notificationManager.createNotificationChannel(mChannel);
+        }
+    }
 
-	@RequiresApi(api = Build.VERSION_CODES.N)
-	@Override
-	public void receiveTickRecord(STickRecord tickRecord) {
-		Intent intent = new Intent(this.c, MainActivity.class);
-		//intent.getstr
-		GlobalData globalDataInstance = GlobalData.getInstance();
-		String logInstrumentCode = globalDataInstance.logInstrumentCode;
+    @Override
+    public void receiveTradeRecord(STradeRecord tradeRecord) {
+        System.out.println(tradeRecord.toString());
+    }
 
-		if(logInstrumentCode.equals(tickRecord.getSymbol())){
+    @SuppressLint("DefaultLocale")
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    @Override
+    public void receiveTickRecord(STickRecord tickRecord) {
+        System.out.println(tickRecord.toString());
 
-		}
-
-		PendingIntent contentIntent = PendingIntent.getActivity(this.c, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-		int r = new Random().nextInt(1000000);
+        Intent intent = new Intent(this.c, MainActivity.class);
+        //intent.getstr
+        GlobalData globalDataInstance = GlobalData.getInstance();
+        String logInstrumentCode = globalDataInstance.logInstrumentCode;
 
 
-		Tick oldTick = this.symbols.get(tickRecord.getSymbol());
-		Tick newTick = new Tick(tickRecord.getAsk(), tickRecord.getBid());
-		if(oldTick == null){
-			return;
-		}
-		Double askChange = oldTick.getChangeAsk(tickRecord.getAsk());
-		boolean notify = false;
-		String notificationText ="" + tickRecord.getSymbol() + ". ";
+        PendingIntent contentIntent = PendingIntent.getActivity(this.c, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        int r = new Random().nextInt(1000000);
 
-		if(abs(askChange) > 1.0) {
-			notificationText += "Ask: %change " + askChange + "%. New:" + newTick.ask + ", Old: " + oldTick.ask + ".";
-			notify = true;
-		}
 
-		Double bidChange = oldTick.getChangeBid(tickRecord.getBid());
-		if(abs(bidChange) > 1.0) {
-			notificationText += "Bid: %change " + askChange + "%. New:" + newTick.bid + ", Old: " + oldTick.bid + ".";
-			notify = true;
-		}
-		if(!notify)
-			return;
+        Tick oldTick = this.symbols.get(tickRecord.getSymbol());
+        Tick newTick = new Tick(tickRecord.getAsk(), tickRecord.getBid());
+        if (oldTick == null) {
+            this.symbols.put(tickRecord.getSymbol(), newTick);
+            return;
+        }
 
-		NotificationCompat.Builder mBuilder =
-				new NotificationCompat.Builder(this.c, CHANNEL_ID)
-						.setSmallIcon(R.drawable.notification_icon)
-						.setContentTitle(notificationText)
-						.setContentText(tickRecord.toString()); //Required on Gingerbread and below
+        Double askChange = oldTick.getChangeAsk(tickRecord.getAsk());
+        boolean notify = false;
+        String notificationText = "" + tickRecord.getSymbol() + ". ";
 
-		if(notify) {
-			this.symbols.replace(tickRecord.getSymbol(), newTick);
-		}
+        if (abs(askChange) > 0.001) {
+            this.symbols.replace(tickRecord.getSymbol(), newTick);
+            notificationText += "Ask: %change " + String.format("%.5f", askChange) + "%. New:" + newTick.ask + ", Old: " + oldTick.ask + ".";
+            notify = true;
+        }
 
-		NotificationManager notificationManager = (NotificationManager) this.c.getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(r, mBuilder.build());
+        Double bidChange = oldTick.getChangeBid(tickRecord.getBid());
+        if (abs(bidChange) > 0.001) {
+            this.symbols.replace(tickRecord.getSymbol(), newTick);
+            notificationText += "Bid: %change " + String.format("%.5f", bidChange) + "%. New:" + newTick.bid + ", Old: " + oldTick.bid + ".";
+            notify = true;
+        }
 
-	}
+        if (logInstrumentCode != null && logInstrumentCode.equals(tickRecord.getSymbol())) {
+            String logs = "" +tickRecord.getSymbol() + ": ";
+            logs += "BidUp: " + String.format("%.5f", bidChange);
+            logs += " AskUp: " + String.format("%.5f", askChange);
+            logs += " " + oldTick.ask;
+            try {
+                globalDataInstance.logs.put(logs + '\n');
+            } catch (InterruptedException ignored) {
 
-	@Override
-	public void receiveBalanceRecord(SBalanceRecord balanceRecord) {
-		System.out.println(balanceRecord.toString());
-	}
+            }
+        }
 
-	@Override
-	public void receiveNewsRecord(SNewsRecord newsRecord) {
-		System.out.println(newsRecord.toString());
-	}
+        if (!notify)
+            return;
 
-	@Override
-	public void receiveKeepAliveRecord(SKeepAliveRecord keepAliveRecord) {
-		Intent intent = new Intent(this.c, MainActivity.class);
-		PendingIntent contentIntent = PendingIntent.getActivity(this.c, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-		int r = new Random().nextInt(1000000);
+        NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(this.c, CHANNEL_ID)
+                        .setSmallIcon(R.drawable.notification_icon)
+                        .setContentTitle(notificationText)
+                        .setContentText(tickRecord.toString()); //Required on Gingerbread and below
 
-		NotificationCompat.Builder mBuilder =
-				new NotificationCompat.Builder(this.c, CHANNEL_ID)
-						.setSmallIcon(R.drawable.notification_icon)
-						.setContentTitle("My notification")
-						.setContentText(keepAliveRecord.toString()); //Required on Gingerbread and below
+        NotificationManager notificationManager = (NotificationManager) this.c.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.notify(r, mBuilder.build());
 
-		NotificationManager notificationManager = (NotificationManager) this.c.getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationManager.notify(r, mBuilder.build());
+    }
 
-		System.out.println(keepAliveRecord.toString());
+    @Override
+    public void receiveBalanceRecord(SBalanceRecord balanceRecord) {
+        System.out.println(balanceRecord.toString());
+    }
 
-	}
+    @Override
+    public void receiveNewsRecord(SNewsRecord newsRecord) {
+        System.out.println(newsRecord.toString());
+    }
 
-	@Override
-	public void receiveCandleRecord(SCandleRecord candleRecord) {
-		System.out.println(candleRecord.toString());
-	}
-	
-	@Override
-	public void receiveTradeStatusRecord(STradeStatusRecord tradeStatusRecord) {
-		System.out.println(tradeStatusRecord.toString());
-	}
+    @Override
+    public void receiveKeepAliveRecord(SKeepAliveRecord keepAliveRecord) {
+        System.out.println(keepAliveRecord.toString());
+    }
 
-	@Override
-	public void receiveProfitRecord(SProfitRecord profitRecord) {
-		System.out.println(profitRecord.toString());
-	}
+    @Override
+    public void receiveCandleRecord(SCandleRecord candleRecord) {
+        System.out.println(candleRecord.toString());
+    }
+
+    @Override
+    public void receiveTradeStatusRecord(STradeStatusRecord tradeStatusRecord) {
+        System.out.println(tradeStatusRecord.toString());
+    }
+
+    @Override
+    public void receiveProfitRecord(SProfitRecord profitRecord) {
+        System.out.println(profitRecord.toString());
+    }
 }
