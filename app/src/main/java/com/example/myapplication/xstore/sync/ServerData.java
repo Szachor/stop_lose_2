@@ -127,7 +127,10 @@ public class ServerData {
     		String address = xapiMap.get(xapiKey);
     		String dictKey = desc+"_"+xapiKey;
     		String dictDesc = desc+" "+xapiKey;
+
+			System.out.println(String.format("%s %s %s %s %s",address, dictKey, dictDesc, mainPort, streamingPort));
     		dict.put(dictKey, new Server(address, mainPort, streamingPort, isSsl, dictDesc, true));
+
     	}
     	return dict;
     }

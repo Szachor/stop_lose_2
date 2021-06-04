@@ -10,6 +10,7 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.preference.PreferenceManager
 import com.example.myapplication.databinding.ActivityMainBinding
+import com.example.myapplication.xstore2.XtbService
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -19,6 +20,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val x: XtbService = XtbService()
 
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
