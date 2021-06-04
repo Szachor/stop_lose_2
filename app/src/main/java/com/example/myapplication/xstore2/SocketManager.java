@@ -1,4 +1,4 @@
-package com.example.myapplication;
+package com.example.myapplication.xstore2;
 
 import org.json.JSONObject;
 

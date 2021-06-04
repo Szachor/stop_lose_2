@@ -18,7 +18,7 @@ import androidx.preference.PreferenceManager;
 import com.example.myapplication.databinding.ActivityMainBinding;
 import com.google.android.material.snackbar.Snackbar;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity2 extends AppCompatActivity {
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
 

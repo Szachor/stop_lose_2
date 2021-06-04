@@ -3,9 +3,7 @@ package com.example.myapplication.xstore.streaming;
 import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 
@@ -13,7 +11,6 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 
 import com.example.myapplication.GlobalData;
-import com.example.myapplication.MainActivity;
 import com.example.myapplication.R;
 import com.example.myapplication.xstore.message.records.SBalanceRecord;
 import com.example.myapplication.xstore.message.records.SCandleRecord;
@@ -35,7 +32,7 @@ public class StreamingListener implements StreamingListenerInterface {
     Context c;
     String CHANNEL_ID = "my_channel_01";
 
-    class Tick {
+    static class Tick {
         public Double ask, bid;
 
         public Tick(Double ask, Double bid) {
@@ -52,11 +49,11 @@ public class StreamingListener implements StreamingListenerInterface {
         }
     }
 
-    Map<String, Tick> symbols = new HashMap<String, Tick>();
+    Map<String, Tick> symbols = new HashMap<>();
 
     public StreamingListener(Context c) {
         this.c = c;
-        int NOTIFICATION_ID = 234;
+        //int NOTIFICATION_ID = 234;
         NotificationManager notificationManager = (NotificationManager) this.c.getSystemService(Context.NOTIFICATION_SERVICE);
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -84,18 +81,9 @@ public class StreamingListener implements StreamingListenerInterface {
     @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public void receiveTickRecord(STickRecord tickRecord) {
-        System.out.println(tickRecord.toString());
-
-        Intent intent = new Intent(this.c, MainActivity.class);
-        //intent.getstr
-        GlobalData globalDataInstance = GlobalData.getInstance();
-        String logInstrumentCode = globalDataInstance.logInstrumentCode;
-
-
-        PendingIntent contentIntent = PendingIntent.getActivity(this.c, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        int r = new Random().nextInt(1000000);
-
-
+        // I thought I need those for notification purpose... but this is useless
+        //Intent intent = new Intent(this.c, MainActivity.class);
+        //PendingIntent contentIntent = PendingIntent.getActivity(this.c, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         Tick oldTick = this.symbols.get(tickRecord.getSymbol());
         Tick newTick = new Tick(tickRecord.getAsk(), tickRecord.getBid());
         if (oldTick == null) {
@@ -120,13 +108,17 @@ public class StreamingListener implements StreamingListenerInterface {
             notify = true;
         }
 
+        GlobalData globalDataInstance = GlobalData.getInstance();
+        String logInstrumentCode = globalDataInstance.logInstrumentCode;
+
         if (logInstrumentCode != null && logInstrumentCode.equals(tickRecord.getSymbol())) {
             String logs = "" +tickRecord.getSymbol() + ": ";
             logs += "BidUp: " + String.format("%.5f", bidChange);
             logs += " AskUp: " + String.format("%.5f", askChange);
             logs += " " + oldTick.ask;
+            System.out.println(logs);
             try {
-                globalDataInstance.logs.put(logs + '\n');
+                globalDataInstance.logs.put(tickRecord);
             } catch (InterruptedException ignored) {
 
             }
@@ -135,15 +127,19 @@ public class StreamingListener implements StreamingListenerInterface {
         if (!notify)
             return;
 
+        showNotification(notificationText);
+    }
+
+    private void showNotification(String notificationText) {
+        int r = new Random().nextInt(1000000);
         NotificationCompat.Builder mBuilder =
                 new NotificationCompat.Builder(this.c, CHANNEL_ID)
                         .setSmallIcon(R.drawable.notification_icon)
                         .setContentTitle(notificationText)
-                        .setContentText(tickRecord.toString()); //Required on Gingerbread and below
+                        .setContentText(notificationText); //Required on Gingerbread and below
 
         NotificationManager notificationManager = (NotificationManager) this.c.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.notify(r, mBuilder.build());
-
     }
 
     @Override
