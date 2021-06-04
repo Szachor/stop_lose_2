@@ -30,7 +30,6 @@ public class SocketManager {
         try {
             IO.Options opts;
             opts = new IO.Options();
-            //optional parameter for authentication
             opts.query = "token=" + token;
             opts.forceNew = true;
             opts.reconnection = true;
