@@ -77,7 +77,7 @@ public class SecondFragment extends Fragment {
                         substring_start = logs.indexOf("\n", substring_start) + 1;
                     }
                     logs = logs.substring(substring_start);
-                    logs += globalDataInstance.logs.take();
+                    logs += globalDataInstance.logs.take().toString();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
