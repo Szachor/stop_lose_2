@@ -27,12 +27,15 @@ class MainActivity : AppCompatActivity() {
 
         val x: XtbAsyncService = XtbAsyncService(login, password);
 
+        println("<---------------------XtbAsyncService--------------------->");
+        println("<---------------------OUTPUT--------------------->");
         //val result = x.allSymbolsAsync.get()
         //println(result);
         val result2 = x.getProfitCalculationAsync(1.3000.toFloat(), 0, 1.23333.toFloat(),"EURPLN", 1.0.toFloat()).get()
         println(result2);
         val result3 = x.getSymbolAsync("EURPLN").get()
         println(result3);
+        println("<--------------------------------------------------------------->");
 
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
