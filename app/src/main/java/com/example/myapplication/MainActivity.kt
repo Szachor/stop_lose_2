@@ -10,7 +10,7 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.preference.PreferenceManager
 import com.example.myapplication.databinding.ActivityMainBinding
-import com.example.myapplication.xstore2.XtbService
+import com.example.myapplication.xstore2.XtbAsyncService
 import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
@@ -21,7 +21,18 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val x: XtbService = XtbService()
+
+        val login = "12263751"
+        val password = "xoh26561"
+
+        val x: XtbAsyncService = XtbAsyncService(login, password);
+
+        //val result = x.allSymbolsAsync.get()
+        //println(result);
+        val result2 = x.getProfitCalculationAsync(1.3000.toFloat(), 0, 1.23333.toFloat(),"EURPLN", 1.0.toFloat()).get()
+        println(result2);
+        val result3 = x.getSymbolAsync("EURPLN").get()
+        println(result3);
 
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
