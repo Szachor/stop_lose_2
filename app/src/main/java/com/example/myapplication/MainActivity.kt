@@ -29,13 +29,31 @@ class MainActivity : AppCompatActivity() {
 
         println("<---------------------XtbAsyncService--------------------->");
         println("<---------------------OUTPUT--------------------->");
-        //val result = x.allSymbolsAsync.get()
-        //println(result);
+        val result = x.allSymbolsAsync.get()
+        println(result);
         val result2 = x.getProfitCalculationAsync(1.3000.toFloat(), 0, 1.23333.toFloat(),"EURPLN", 1.0.toFloat()).get()
         println(result2);
         val result3 = x.getSymbolAsync("EURPLN").get()
         println(result3);
-        println("<--------------------------------------------------------------->");
+
+        x.subscribeGetKeepAlive();
+        x.subscribeGetTicketPrice("USDPLN")
+        x.subscribeGetTicketPrice("EURUSD")
+        x.subscribeGetTicketPrice("EURPLN")
+        val queueResponses =  x.subscriptionResponses
+        while(true){
+            val mainResponse =
+                """
+                <---------------------------------------------------------------------->
+                <---------------------------Logs Taken From Queue----------------------------------->
+                This is response from Queue
+                ${queueResponses.take()}
+                <---------------------------Logs Taken From Queue-------------------------------->
+                <---------------------------------------------------------------------->
+                """.trimIndent()
+
+            println(mainResponse);
+        }
 
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)

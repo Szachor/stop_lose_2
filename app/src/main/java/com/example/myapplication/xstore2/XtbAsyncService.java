@@ -23,26 +23,49 @@ import java.net.Socket;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLSocketFactory;
 
 import kotlin.NotImplementedError;
 
-public class XtbAsyncService{
+public class XtbAsyncService {
     private final XtbService xtbService;
 
     public XtbAsyncService(String login, String password) {
         this.xtbService = new XtbService(login, password);
     }
+
     private boolean isWorking = false;
 
-    private void AssertWorking(){
+    private void AssertWorking() {
         assert !isWorking;
         isWorking = true;
     }
-    private void StopWorking(){
+
+    private void StopWorking() {
         isWorking = false;
+    }
+
+    public Future<Boolean> connectAsync() {
+        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
+
+        Executors.newCachedThreadPool().submit(() -> {
+            completableFuture.complete(xtbService.connect());
+        });
+
+        return completableFuture;
+    }
+
+    public Future<Boolean> disconnectAsync() {
+        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
+
+        Executors.newCachedThreadPool().submit(() -> {
+            completableFuture.complete(xtbService.disconnect());
+        });
+
+        return completableFuture;
     }
 
     public Future<JSONObject> getAllSymbolsAsync() {
@@ -84,7 +107,32 @@ public class XtbAsyncService{
         StopWorking();
         return completableFuture;
     }
+
+    public Future<Boolean> subscribeGetTicketPrice(String symbol) {
+        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
+        Executors.newCachedThreadPool().submit(() -> {
+            xtbService.subscribeGetTicketPrices(symbol);
+            xtbService.runSubscriptionStreamingReader();
+            completableFuture.complete(true);
+        });
+        return completableFuture;
+    }
+
+    public Future<Boolean> subscribeGetKeepAlive() {
+        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
+        Executors.newCachedThreadPool().submit(() -> {
+            xtbService.getKeepAlive();
+            xtbService.runSubscriptionStreamingReader();
+            completableFuture.complete(true);
+        });
+        return completableFuture;
+    }
+
+    public LinkedBlockingQueue<JSONObject> getSubscriptionResponses() {
+        return xtbService.getSubscriptionResponses();
+    }
 }
+
 
 class WebSocket {
     private final int _webSocketPort = 5124;
@@ -151,43 +199,19 @@ class WebSocket {
 class XtbService {
     protected static String streamSessionId;
 
-    final private String loginJson = "{\n" +
-            "\t\"command\" : \"login\",\n" +
-            "\t\"arguments\" : {\n" +
-            "\t\t\"userId\" : \"%s\",\n" +
-            "\t\t\"password\": \"%s\"\n" +
-            "\t}\n" +
-            "}";
-
-    final private String getAllSymbolsJson = "{\n" +
-            "\t\"command\": \"getAllSymbols\"\n" +
-            "}";
-
-    final private String getKeepAliveJson = "{\n" +
-            "\t\"command\" : \"getKeepAlive\",\n" +
-            "\t\"streamSessionId\" : \"%s\"\n" +
-            "}\n";
-
-    final private String getTickPrices = "{\n" +
-            "\t\"command\" : \"getTickPrices\",\n" +
-            "\t\"streamSessionId\" : \"%s\",\n" +
-            "\t\"symbol\": \"%s\"\n" +
-            "}";
-
-    final private String pingJson = "{\n" +
-            "\t\"command\": \"ping\"\n" +
-            "}";
-
-    final private String getSymbolJson = "{\n" +
-            "\t\"command\": \"getSymbol\",\n" +
-            "\t\"arguments\": {\n" +
-            "\t\t\"symbol\": \"%s\"\n" +
-            "\t}\n" +
-            "}";
-
 
     final private String login;
     final private String password;
+
+    private LinkedBlockingQueue<JSONObject> subscriptionResponses = new LinkedBlockingQueue<>();
+
+    public LinkedBlockingQueue<JSONObject> getSubscriptionResponses() {
+        return subscriptionResponses;
+    }
+
+    public void setSubscriptionResponses(LinkedBlockingQueue<JSONObject> subscriptionResponses) {
+        this.subscriptionResponses = subscriptionResponses;
+    }
 
     private boolean isLogged() {
         return _webSocket != null;
@@ -206,14 +230,14 @@ class XtbService {
 
     private WebSocket getStreamingWebSocket() {
         if (_streamingWebSocket == null) {
-            _streamingWebSocket = new WebSocket(5124);
+            _streamingWebSocket = new WebSocket(5125);
         }
         return _streamingWebSocket;
     }
 
     private void login() {
         WebSocket webSocket = getWebSocket();
-        JSONObject response = sendMessage(loginJson, (Object)login, (Object)password);
+        JSONObject response = processMessage(loginJson, (Object) login, (Object) password);
         try {
             streamSessionId = response.getString("streamSessionId");
         } catch (JSONException e) {
@@ -221,17 +245,12 @@ class XtbService {
         }
     }
 
-    private JSONObject sendMessage(String message, Object... parameters){
+    private JSONObject processMessage(String message, Object... parameters) {
         String messageWitParameters = String.format(message, parameters);
-        return sendMessage(messageWitParameters);
+        return processMessage(messageWitParameters);
     }
 
-    private JSONObject sendMessage(String message, String... parameters){
-        String messageWitParameters = String.format(message, (Object) parameters);
-        return sendMessage(messageWitParameters);
-    }
-
-    private JSONObject sendMessage(String message){
+    private JSONObject processMessage(String message) {
         if (!isLogged()) {
             login();
         }
@@ -268,26 +287,59 @@ class XtbService {
         return line;
     }
 
-    protected void keepAlive() {
+    protected void getKeepAlive() {
         WebSocket streamingWebSocket = getStreamingWebSocket();
         String getKeepAliveWithSessionIdJson = String.format(getKeepAliveJson, streamSessionId);
         streamingWebSocket.sendMessage(getKeepAliveWithSessionIdJson);
+    }
 
-        while (true) {
-            String line = getResponse(streamingWebSocket);
-            System.out.println(line);
+    public void subscribeGetTicketPrices(String symbol) {
+        WebSocket streamingWebSocket = getStreamingWebSocket();
+        String getTickPricesToSend = String.format(getTickPrices, streamSessionId, symbol);
+        streamingWebSocket.sendMessage(getTickPricesToSend);
+    }
+
+    boolean isStreamingReaderRunning = false;
+
+    public void runSubscriptionStreamingReader() {
+        if (!isStreamingReaderRunning) {
+            isStreamingReaderRunning = true;
+
+            Runnable runnable = () -> {
+                String line;
+                StringBuilder response;
+
+                while (isStreamingReaderRunning) {
+                    line = "Start";
+                    response = new StringBuilder();
+                    while (!line.equals("")) {
+                        try {
+                            line = getStreamingWebSocket().getSocketReader().readLine();
+                            response.append(line);
+                        } catch (IOException exception) {
+                            exception.printStackTrace();
+                        }
+                    }
+                    try {
+                        subscriptionResponses.put(new JSONObject(response.toString()));
+
+                        String threadResponse = "<---------------------------------------------------------------------->\n" +
+                                "<---------------------------Thread logs----------------------------------->\n" +
+                                "This is response from Thread\n" + response.toString() +
+                                "\n<---------------------------Thread logs-------------------------------->\n" +
+                                "<---------------------------------------------------------------------->\n";
+                        System.out.println(threadResponse);
+                    } catch (InterruptedException | JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            new Thread(runnable).start();
         }
     }
 
-    protected void getTicketPrices() {
-        WebSocket streamingWebSocket = getStreamingWebSocket();
-        String getTickPricesToSend = String.format(getTickPrices, streamSessionId, "EURUSD");
-        streamingWebSocket.sendMessage(getTickPricesToSend);
-
-        while (true) {
-            String line = getResponse(streamingWebSocket);
-            System.out.println(line);
-        }
+    public void stopStreamingReader() {
+        isStreamingReaderRunning = false;
     }
 
     public XtbService(String login, String password) {
@@ -295,7 +347,63 @@ class XtbService {
         this.password = password;
     }
 
-    private String getProfitCalculationJson ="{\n" +
+    protected JSONObject getProfitCalculation(float closePrice, int cmd, float openPrice, String symbol, float volume) {
+        String message = XtbServiceMethodsContent.getGetProfitCalculationMessage(closePrice, cmd, openPrice, symbol, volume);
+        return processMessage(getProfitCalculationJson, (Object) closePrice, (Object) cmd, (Object) openPrice, (Object) symbol, (Object) volume);
+    }
+
+    protected JSONObject getSymbol(String symbol) {
+        return processMessage(getSymbolJson, (Object) symbol);
+    }
+
+    protected JSONObject getAllSymbols() {
+        return processMessage(getAllSymbolsJson);
+    }
+
+    public Boolean connect() {
+        _webSocket = new WebSocket(5124);
+        _streamingWebSocket = new WebSocket(5125);
+
+    }
+}
+
+class XtbServiceMethodsContent {
+    static final private String loginJson = "{\n" +
+            "\t\"command\" : \"login\",\n" +
+            "\t\"arguments\" : {\n" +
+            "\t\t\"userId\" : \"%s\",\n" +
+            "\t\t\"password\": \"%s\"\n" +
+            "\t}\n" +
+            "}";
+
+    static final private String getAllSymbolsJson = "{\n" +
+            "\t\"command\": \"getAllSymbols\"\n" +
+            "}";
+
+    static final private String getKeepAliveJson = "{\n" +
+            "\t\"command\" : \"getKeepAlive\",\n" +
+            "\t\"streamSessionId\" : \"%s\"\n" +
+            "}\n";
+
+    static final private String getTickPricesJson = "{\n" +
+            "\t\"command\" : \"getTickPrices\",\n" +
+            "\t\"streamSessionId\" : \"%s\",\n" +
+            "\t\"symbol\": \"%s\"\n" +
+            "}";
+
+    static final private String pingJson = "{\n" +
+            "\t\"command\": \"ping\"\n" +
+            "}";
+
+    static final private String getSymbolJson = "{\n" +
+            "\t\"command\": \"getSymbol\",\n" +
+            "\t\"arguments\": {\n" +
+            "\t\t\"symbol\": \"%s\"\n" +
+            "\t}\n" +
+            "}";
+
+
+    static final private String getProfitCalculationJson = "{\n" +
             "\t\"command\": \"getProfitCalculation\",\n" +
             "\t\"arguments\": {\n" +
             "\t\t\"closePrice\": %s,\n" +
@@ -306,15 +414,75 @@ class XtbService {
             "\t}\n" +
             "}";
 
-    protected JSONObject getProfitCalculation(float closePrice, int cmd, float openPrice, String symbol, float volume) {
-        return sendMessage(getProfitCalculationJson,  (Object) closePrice, (Object) cmd, (Object) openPrice, (Object) symbol, (Object) volume);
+
+    public static String getLoginMessage() {
+        return loginJson;
     }
 
-    protected JSONObject getSymbol(String symbol){
-        return sendMessage(getSymbolJson, (Object) symbol);
+    public static String getGetAllSymbolsMessage() {
+        return getAllSymbolsJson;
     }
 
-    protected JSONObject getAllSymbols(){
-        return sendMessage(getAllSymbolsJson);
+    public static String getGetKeepAliveMessage() {
+        return getKeepAliveJson;
+    }
+
+    public static String getGetTickPricesMessage() {
+        return getTickPricesJson;
+    }
+
+    public static String getPingJsonMessage() {
+        return pingJson;
+    }
+
+    public static String getGetSymbolnMessage() {
+        return getSymbolJson;
+    }
+
+    public static String getGetProfitCalculationMessage(float closePrice, int cmd, float openPrice, String symbol, float volume) {
+        String message = format(getProfitCalculationJson, ());
+        return getProfitCalculationJson;
+    }
+
+
+
+    private static class XTBMessageBuilder {
+        static final private String baseMessage = "{\n" +
+                "\t\"command\": \"getSymbol\",\n" +
+                "\t\"arguments\": {\n" +
+                "\t\t\"symbol\": \"%s\"\n" +
+                "\t}\n" +
+                "}";
+        JSONObject messageJson;
+
+        public XTBMessageBuilder(String command, String sessionId, Object... args) throws JSONException {
+            this(command, args);
+
+
+            if (args.length > 0) {
+
+            }
+        }
+
+        public XTBMessageBuilder(String command, Object... args) throws JSONException {
+            this(command);
+            if (args.length > 0) {
+                messageJson.put("arguments", "%s");
+                for (Object arg : args) {
+
+                }
+            }
+        }
+
+        public XTBMessageBuilder(String command) throws JSONException {
+            messageJson = new JSONObject();
+            messageJson.put("command", "%s");
+
+        }
+
+    }
+
+    private static String format(message, parameters) {
+
     }
 }
