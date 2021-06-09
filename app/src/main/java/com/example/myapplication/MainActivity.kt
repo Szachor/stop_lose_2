@@ -10,8 +10,9 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.preference.PreferenceManager
 import com.example.myapplication.databinding.ActivityMainBinding
-import com.example.myapplication.xstore2.XtbAsyncService
+import com.example.myapplication.xstore2.XtbServiceAsync
 import com.google.android.material.snackbar.Snackbar
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -25,35 +26,43 @@ class MainActivity : AppCompatActivity() {
         val login = "12263751"
         val password = "xoh26561"
 
-        val x: XtbAsyncService = XtbAsyncService(login, password);
+        val x: XtbServiceAsync =
+            XtbServiceAsync(login, password);
 
+
+        // START
         println("<---------------------XtbAsyncService--------------------->");
-        println("<---------------------OUTPUT--------------------->");
-        val result = x.allSymbolsAsync.get()
-        println(result);
-        val result2 = x.getProfitCalculationAsync(1.3000.toFloat(), 0, 1.23333.toFloat(),"EURPLN", 1.0.toFloat()).get()
-        println(result2);
-        val result3 = x.getSymbolAsync("EURPLN").get()
-        println(result3);
+        println("<-----------------Request->Response Methods--------------------->");
+        x.connectAsync();
 
-        x.subscribeGetKeepAlive();
+        val allSymbolsAsync_result = x.allSymbolsAsync
+        val pingAsync_result = x.pingAsync
+        val getProfitCalculationAsync_result =
+            x.getProfitCalculationAsync(1.1.toFloat(), 1, 1.1.toFloat(), "USDPLN", 1.1.toFloat())
+        val getSymbolAyns_result = x.getSymbolAsync("USDPLN")
+
+        println(getSymbolAyns_result.get())
+        println(getProfitCalculationAsync_result.get())
+        println(pingAsync_result.get())
+        println(allSymbolsAsync_result.get())
+
+        println("<-------------END Request->Response Methods--------------------->");
+        println("<-------------Streaming Methods--------------------->");
+        x.subscribeGetKeepAlive()
         x.subscribeGetTicketPrice("USDPLN")
         x.subscribeGetTicketPrice("EURUSD")
         x.subscribeGetTicketPrice("EURPLN")
-        val queueResponses =  x.subscriptionResponses
-        while(true){
-            val mainResponse =
-                """
-                <---------------------------------------------------------------------->
-                <---------------------------Logs Taken From Queue----------------------------------->
-                This is response from Queue
-                ${queueResponses.take()}
-                <---------------------------Logs Taken From Queue-------------------------------->
-                <---------------------------------------------------------------------->
-                """.trimIndent()
+        val subscriptionResponsesQueue = x.subscriptionResponsesQueue
 
-            println(mainResponse);
+        //x.disconnectAsync();
+        val runnable = Runnable {
+            while(x.isConnected.get()){
+                val response = subscriptionResponsesQueue.take().toString()
+                println(response)
+            }
         }
+        Thread(runnable).start()
+        // END
 
 
         val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
@@ -65,16 +74,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
-
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
-        setupActionBarWithNavController(navController, appBarConfiguration)
-
-        binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show()
-        }
-
 
     }
 
