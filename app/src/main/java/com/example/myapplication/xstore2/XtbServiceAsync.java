@@ -230,7 +230,7 @@ class XtbService {
     }
 
     public Boolean disconnect() {
-
+        _isConnected = false;
         return true;
     }
 
