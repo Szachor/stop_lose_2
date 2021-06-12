@@ -259,6 +259,7 @@ class XtbService {
             _isConnected = false;
             exception.printStackTrace();
         }
+
         last_time_connection_checked = System.currentTimeMillis();
         return new JSONObject(response.toString());
     }
