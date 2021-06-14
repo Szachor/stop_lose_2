@@ -132,6 +132,9 @@ public class XtbServiceAsync {
     public Future<Boolean> subscribeGetTicketPrice(String symbol) {
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
         streamingExecutor.submit(() -> {
+            if(xtbService.isConnected()){
+
+            }
             xtbService.subscribeGetTicketPrices(symbol);
             xtbService.runSubscriptionStreamingReader();
             completableFuture.complete(true);

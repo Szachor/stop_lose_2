@@ -14,7 +14,7 @@ public class XtbServiceAsyncTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
         xtbService = new XtbServiceAsync("12263751", "xoh26561");
-        xtbService.connectAsync();
+        boolean isConnected = xtbService.connectAsync().get();
     }
 
     public void tearDown() {
@@ -25,7 +25,6 @@ public class XtbServiceAsyncTest extends TestCase {
         JSONObject response = xtbService.getAllSymbolsAsync().get();
         JSONArray tested_value = response.getJSONArray("returnData");
         int tested_value_2 = tested_value.length();
-        String tested_value_3 = ((JSONObject)tested_value.get(0)).get("symbol").toString();
         assert(tested_value_2 > 10);
     }
 
@@ -39,32 +38,54 @@ public class XtbServiceAsyncTest extends TestCase {
     public void testGetSymbolAsyncNonExistingSymbol() throws ExecutionException, InterruptedException, JSONException {
         JSONObject response = xtbService.getSymbolAsync("XXX").get();
         String errorCode = response.getString("errorCode");
-        String errorDescription = response.getString("errorDescr");
-        String status = response.getString("status");
+        Boolean status = response.getBoolean("status");
 
-        assertEquals(errorCode, "");
-        assertEquals(status, "false");
+        assertEquals("BE115", errorCode);
+        assertFalse(status);
     }
 
-    public void testGetPingAsync() throws ExecutionException, InterruptedException {
-        JSONObject response = xtbService.getPingAsync().get();
+    public void testGetPingAsync() throws ExecutionException, InterruptedException, JSONException {
+        boolean status = xtbService.getPingAsync().get().getBoolean("status");
+        assertTrue(status);
     }
 
-    public void testGetProfitCalculationAsync() throws ExecutionException, InterruptedException {
-        JSONObject response = xtbService.getProfitCalculationAsync(1.0f, 1, 1.0f, "PLNUSD", 10.0f).get();
+    public void testGetProfitCalculationAsyncProfitBellowZero() throws ExecutionException, InterruptedException, JSONException {
+        String requestedSymbol = "EURUSD";
+        JSONObject response = xtbService.getProfitCalculationAsync(1.2f, 1, 1.0f, requestedSymbol, 10.0f).get();
+        boolean status = response.getBoolean("status");
+        JSONObject result = response.getJSONObject("returnData");
+        double profit = result.getDouble("profit");
+        assertTrue(profit < 0);
     }
 
-    public void testSubscribeGetTicketPrice() throws ExecutionException, InterruptedException {
-        Boolean isStarted = xtbService.subscribeGetTicketPrice("PLNUSD").get();
+    public void testGetProfitCalculationAsyncProfitZero() throws ExecutionException, InterruptedException, JSONException {
+        String requestedSymbol = "EURUSD";
+        JSONObject response = xtbService.getProfitCalculationAsync(1.0f, 1, 1.0f, requestedSymbol, 10.0f).get();
+        boolean status = response.getBoolean("status");
+        JSONObject result = response.getJSONObject("returnData");
+        double profit = result.getDouble("profit");
+        assertEquals(0.0, profit);
     }
 
-    public void testSubscribeGetKeepAlive() throws ExecutionException, InterruptedException {
-        Boolean isStarted = xtbService.subscribeGetKeepAlive().get();
+    public void testSubscribeGetTicketPriceStarted() throws ExecutionException, InterruptedException {
+        boolean isStarted = xtbService.subscribeGetTicketPrice("PLNUSD").get();
+        assertTrue(isStarted);
     }
 
+
+    public void testSubscribeGetKeepAliveStarted() throws ExecutionException, InterruptedException {
+        boolean isStarted = xtbService.subscribeGetKeepAlive().get();
+        assertTrue(isStarted);
+    }
+    /*
     public void testGetSubscriptionResponsesQueue() throws ExecutionException, InterruptedException {
+        boolean isStarted = xtbService.subscribeGetKeepAlive().get();
+        assertTrue(isStarted);
+        LinkedBlockingQueue<JSONObject> subscriptionResponsesQueue = xtbService.getSubscriptionResponsesQueue();
+        JSONObject response = subscriptionResponsesQueue.take();
     }
 
     public void testIsConnected() throws ExecutionException, InterruptedException {
     }
+    */
 }
