@@ -14,7 +14,7 @@ public class XtbServiceAsyncTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
         xtbService = new XtbServiceAsync("12263751", "xoh26561");
-        boolean isConnected = xtbService.connectAsync().get();
+        xtbService.connectAsync().get();
     }
 
     public void tearDown() {
@@ -38,7 +38,7 @@ public class XtbServiceAsyncTest extends TestCase {
     public void testGetSymbolAsyncNonExistingSymbol() throws ExecutionException, InterruptedException, JSONException {
         JSONObject response = xtbService.getSymbolAsync("XXX").get();
         String errorCode = response.getString("errorCode");
-        Boolean status = response.getBoolean("status");
+        boolean status = response.getBoolean("status");
 
         assertEquals("BE115", errorCode);
         assertFalse(status);
@@ -52,7 +52,6 @@ public class XtbServiceAsyncTest extends TestCase {
     public void testGetProfitCalculationAsyncProfitBellowZero() throws ExecutionException, InterruptedException, JSONException {
         String requestedSymbol = "EURUSD";
         JSONObject response = xtbService.getProfitCalculationAsync(1.2f, 1, 1.0f, requestedSymbol, 10.0f).get();
-        boolean status = response.getBoolean("status");
         JSONObject result = response.getJSONObject("returnData");
         double profit = result.getDouble("profit");
         assertTrue(profit < 0);
@@ -61,7 +60,6 @@ public class XtbServiceAsyncTest extends TestCase {
     public void testGetProfitCalculationAsyncProfitZero() throws ExecutionException, InterruptedException, JSONException {
         String requestedSymbol = "EURUSD";
         JSONObject response = xtbService.getProfitCalculationAsync(1.0f, 1, 1.0f, requestedSymbol, 10.0f).get();
-        boolean status = response.getBoolean("status");
         JSONObject result = response.getJSONObject("returnData");
         double profit = result.getDouble("profit");
         assertEquals(0.0, profit);
