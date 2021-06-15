@@ -6,26 +6,33 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class XtbServiceAsyncTest extends TestCase {
 
-    XtbServiceAsync xtbService;
+    protected XtbServiceAsync xtbService;
+
     public void setUp() throws Exception {
         super.setUp();
         xtbService = new XtbServiceAsync("12263751", "xoh26561");
         xtbService.connectAsync().get();
     }
 
-    public void tearDown() {
-        xtbService.disconnectAsync();
+    public void tearDown() throws ExecutionException, InterruptedException {
+        xtbService.disconnectAsync().get();
     }
 
     public void testGetAllSymbolsAsync() throws ExecutionException, InterruptedException, JSONException {
         JSONObject response = xtbService.getAllSymbolsAsync().get();
         JSONArray tested_value = response.getJSONArray("returnData");
         int tested_value_2 = tested_value.length();
-        assert(tested_value_2 > 10);
+        assert (tested_value_2 > 10);
     }
 
     public void testGetSymbolAsync() throws ExecutionException, InterruptedException, JSONException {
@@ -70,20 +77,36 @@ public class XtbServiceAsyncTest extends TestCase {
         assertTrue(isStarted);
     }
 
-
     public void testSubscribeGetKeepAliveStarted() throws ExecutionException, InterruptedException {
         boolean isStarted = xtbService.subscribeGetKeepAlive().get();
         assertTrue(isStarted);
     }
-    /*
-    public void testGetSubscriptionResponsesQueue() throws ExecutionException, InterruptedException {
-        boolean isStarted = xtbService.subscribeGetKeepAlive().get();
-        assertTrue(isStarted);
-        LinkedBlockingQueue<JSONObject> subscriptionResponsesQueue = xtbService.getSubscriptionResponsesQueue();
-        JSONObject response = subscriptionResponsesQueue.take();
-    }
 
-    public void testIsConnected() throws ExecutionException, InterruptedException {
+    public void testSubscribeGetKeepAliveReturnedTwoResponses() throws ExecutionException, InterruptedException, TimeoutException {
+        xtbService.subscribeGetKeepAlive().get();
+        LinkedBlockingQueue<JSONObject> queue = xtbService.getSubscriptionResponsesQueue();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
+
+        executor.submit(() -> {
+            int i = 0;
+            while(i<2) {
+                try {
+                    JSONObject response = queue.take();
+                    if (!response.getString("command").equals("keepAlive")){
+                        throw new Exception("Response seems not be OK. Expected command = keepAlive in response, but could not find it.\n" +
+                                "Response: "+ response.toString());
+                    }
+                    i++;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            completableFuture.complete(true);
+        });
+
+        boolean isThreadReturningResponses = completableFuture.get(10, TimeUnit.SECONDS);
+        assertTrue(isThreadReturningResponses);
     }
-    */
 }

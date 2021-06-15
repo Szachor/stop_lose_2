@@ -35,6 +35,9 @@ public class XtbServiceAsync {
         this.xtbService = new XtbService(login, password);
     }
 
+    protected XtbServiceAsync(XtbService xtbService) {
+        this.xtbService = xtbService;
+    }
 
     public Future<Boolean> connectAsync() {
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
@@ -43,7 +46,7 @@ public class XtbServiceAsync {
         executor.submit(() -> {
             try {
                 completableFuture.complete(xtbService.connect());
-            } catch (JSONException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         });
@@ -132,7 +135,7 @@ public class XtbServiceAsync {
     public Future<Boolean> subscribeGetTicketPrice(String symbol) {
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
         streamingExecutor.submit(() -> {
-            if(xtbService.isConnected()){
+            if (xtbService.isConnected()) {
 
             }
             xtbService.subscribeGetTicketPrices(symbol);
@@ -160,7 +163,7 @@ public class XtbServiceAsync {
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
 
         executor.submit(() -> {
-                completableFuture.complete(xtbService.isConnected());
+            completableFuture.complete(xtbService.isConnected());
         });
         return completableFuture;
     }
@@ -171,33 +174,22 @@ class XtbService {
     final private String login;
     final private String password;
 
+    private boolean _stopListening = false;
+
     // This WebSocket for main connection
     // It is used for the Request-Reply commands.
-    private WebSocket _webSocket;
+    protected WebSocket _webSocket;
 
     //
-    private WebSocket _streamingWebSocket;
+    protected WebSocket _streamingWebSocket;
     protected static String streamSessionId;
-    boolean isStreamingReaderRunning = false;
     private final LinkedBlockingQueue<JSONObject> subscriptionResponses = new LinkedBlockingQueue<>();
 
-    private boolean _isConnected = false;
-
-    private long last_time_connection_checked;
-    private boolean passed_X_millis_from_the_last_time_when_the_connection_was_checked(int x){
-        return System.currentTimeMillis() - last_time_connection_checked > x;
-    }
-
     public boolean isConnected() {
-        try {
-            if(_isConnected && passed_X_millis_from_the_last_time_when_the_connection_was_checked(200)){
-                this.getPing();
-                last_time_connection_checked = System.currentTimeMillis();
-            }
-            return _isConnected;
-        } catch (JSONException e) {
+        if (getWebSocket() == null) {
             return false;
         }
+        return getWebSocket().isConnected();
     }
 
     public XtbService(String login, String password) {
@@ -228,16 +220,26 @@ class XtbService {
 
         // Login should be moved from this place somewhere else...
         this.login();
-        _isConnected = true;
+        _stopListening = false;
         return true;
     }
 
     public Boolean disconnect() {
-        _isConnected = false;
+        _stopListening = true;
+        try {
+            _webSocket.disconnect();
+        } catch (IOException exception) {
+            exception.printStackTrace();
+        }
+        try {
+            _streamingWebSocket.disconnect();
+        } catch (IOException exception) {
+            exception.printStackTrace();
+        }
         return true;
     }
 
-    private void login() throws JSONException {
+    protected void login() throws JSONException {
         JSONObject response = processMessage(XtbServiceBodyMessageBuilder.getLoginMessage(this.login, this.password));
         streamSessionId = response.getString("streamSessionId");
     }
@@ -250,63 +252,46 @@ class XtbService {
     }
 
     private JSONObject getResponse(WebSocket webSocket) throws JSONException {
-        String line;
-        StringBuilder response = new StringBuilder();
+        JSONObject response;
         try {
-            line = webSocket.getSocketReader().readLine();
-            do {
-                response.append(line);
-                line = webSocket.getSocketReader().readLine();
-            } while (!line.equals(""));
-        } catch (IOException exception) {
-            _isConnected = false;
+            response = webSocket.getNextMessage();
+        } catch (JSONException exception) {
+            response = new JSONObject();
+            response.put("Error", "Couldn't parse response to the JSON format");
+            response.put("Response", response);
             exception.printStackTrace();
+        } catch (IOException exception) {
+            // Thread was waiting for message, but Connection was lost.
+            if(!_stopListening){
+                exception.printStackTrace();
+            }
+            response = new JSONObject();
+            response.put("Error", "Lost connection");
         }
-
-        last_time_connection_checked = System.currentTimeMillis();
         return new JSONObject(response.toString());
     }
 
     public void runSubscriptionStreamingReader() {
-        if (!isStreamingReaderRunning) {
-            isStreamingReaderRunning = true;
-
-            Runnable runnable = () -> {
-                String line;
-                StringBuilder response;
-
-                while (isStreamingReaderRunning && _isConnected) {
-                    line = "Start";
-                    response = new StringBuilder();
-                    /*Shit became alive line != null */
-                    while (line != null && !line.equals("")) {
-                        try {
-                            line = getStreamingWebSocket().getSocketReader().readLine();
-                            response.append(line);
-                        } catch (IOException exception) {
-                            exception.printStackTrace();
-                        }
-                    }
-                    try {
-                        if(response.toString().equals("null")){
-                            _isConnected = false;
-                        }
-                        last_time_connection_checked = System.currentTimeMillis();
+        Runnable runnable = () -> {
+            while (!_stopListening && isConnected()) {
+                JSONObject response;
+                try {
+                    response = getResponse(getStreamingWebSocket());
+                    if (!response.has("Error")) {
                         subscriptionResponses.put(new JSONObject(response.toString()));
-                    } catch (InterruptedException | JSONException e) {
+                    }
+                }catch (JSONException e) {
+                    e.printStackTrace();
+                }catch (InterruptedException e){
+                    if(!_stopListening){
                         e.printStackTrace();
                     }
                 }
-            };
-            new Thread(runnable).start();
-        }
+            }
+        };
+        Thread t = new Thread(runnable);
+        t.start();
     }
-
-    /*
-    public void stopStreamingReader() {
-        isStreamingReaderRunning = false;
-    }
-*/
 
     protected JSONObject getAllSymbols() throws JSONException {
         return processMessage(XtbServiceBodyMessageBuilder.getAllSymbolsMessage());
