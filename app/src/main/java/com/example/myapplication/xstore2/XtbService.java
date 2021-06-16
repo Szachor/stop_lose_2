@@ -46,7 +46,7 @@ public class XtbService extends Service {
         PendingIntent pendingIntent =
                 PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
-        //createNotificationChannel();
+        createNotificationChannel();
         Notification notification =
                 new Notification.Builder(this, CHANNEL_ID)
                         .setContentTitle("Content Title")
@@ -78,4 +78,5 @@ public class XtbService extends Service {
     public void onDestroy() {
         Toast.makeText(this, "service done", Toast.LENGTH_SHORT).show();
     }
+
 }

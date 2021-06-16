@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -43,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
+        xtbTests()
         return when (item.itemId) {
             R.id.action_settings -> true
             else -> super.onOptionsItemSelected(item)
@@ -53,5 +55,16 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
+    }
+
+
+    private fun xtbTests() {
+        val serviceIntent = Intent(this, XtbService::class.java)
+
+        serviceIntent.putExtra("inputExtra", "Foreground Service Example in Android")
+        startService(serviceIntent)
+        val login = "12263751"
+        val password = "xoh26561"
+        val x = XtbClientAsync(login, password)
     }
 }
