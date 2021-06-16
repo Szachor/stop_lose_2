@@ -20,6 +20,8 @@ import com.example.myapplication.databinding.FragmentFirstBinding;
 import com.example.myapplication.xstore.sync.Credentials;
 import com.example.myapplication.xstore.sync.Example;
 import com.example.myapplication.xstore.sync.ServerData;
+import com.example.myapplication.xstore2.XtbClientAsync;
+import com.example.myapplication.xstore2.XtbService;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -56,6 +58,8 @@ public class FirstFragment extends Fragment {
         arrayAdapter = new ArrayAdapter<>(this.requireContext(), R.layout.listview_item, listItems);
         binding.listeningList.setAdapter(arrayAdapter);
 
+        xtbTests();
+
         binding.addInstrumentButton.setOnClickListener(l -> {
             String instrument = binding.addInstrumentText.getText().toString();
             if (listItems.contains(instrument)) {
@@ -90,6 +94,15 @@ public class FirstFragment extends Fragment {
             ex.runExample(ServerData.ServerEnum.DEMO, credentials, instrument);
         };
         new Thread(runnable).start();
+    }
+
+    private void xtbTests(){
+        XtbService service = new XtbService();
+        service.startService(this.getActivity().getIntent());
+
+        String login = "12263751";
+        String password = "xoh26561";
+        XtbClientAsync x = new XtbClientAsync(login, password);
     }
 
     @Override

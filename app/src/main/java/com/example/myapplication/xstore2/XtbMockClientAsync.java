@@ -1,15 +1,15 @@
 package com.example.myapplication.xstore2;
 import org.json.JSONException;
 
-class XtbMockServiceAsync extends XtbServiceAsync {
-    public XtbMockServiceAsync() {
-        super(new XtbMockService());
+class XtbMockClientAsync extends XtbClientAsync {
+    public XtbMockClientAsync() {
+        super(new XtbMockClient());
     }
 }
 
 
-class XtbMockService extends XtbService {
-    public XtbMockService() {
+class XtbMockClient extends XtbClient {
+    public XtbMockClient() {
         super("Mock login", "Mock password");
     }
 

@@ -1,5 +1,6 @@
 package com.example.myapplication.xstore2;
 
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -9,6 +10,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+
+
+
 
 
 /*
@@ -24,19 +28,17 @@ import java.util.concurrent.LinkedBlockingQueue;
 /*interface MyInterface {
     Boolean doSomething() throws JSONException, IOException;
 }*/
-
-public class XtbServiceAsync {
-    private final XtbService xtbService;
+public class XtbClientAsync {
+    private final XtbClient xtbClient;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final ExecutorService streamingExecutor = Executors.newFixedThreadPool(6);
 
 
-    public XtbServiceAsync(String login, String password) {
-        this.xtbService = new XtbService(login, password);
+    public XtbClientAsync(String login, String password) {
+        this.xtbClient = new XtbClient(login, password);
     }
 
-    protected XtbServiceAsync(XtbService xtbService) {
-        this.xtbService = xtbService;
+    protected XtbClientAsync(XtbClient xtbClient) {
+        this.xtbClient = xtbClient;
     }
 
     public Future<Boolean> connectAsync() {
@@ -45,7 +47,7 @@ public class XtbServiceAsync {
 
         executor.submit(() -> {
             try {
-                completableFuture.complete(xtbService.connect());
+                completableFuture.complete(xtbClient.connect());
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -58,7 +60,7 @@ public class XtbServiceAsync {
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
 
         executor.submit(() -> {
-            completableFuture.complete(xtbService.disconnect());
+            completableFuture.complete(xtbClient.disconnect());
         });
 
         return completableFuture;
@@ -83,7 +85,7 @@ public class XtbServiceAsync {
         CompletableFuture<JSONObject> completableFuture = new CompletableFuture<>();
         executor.submit(() -> {
             try {
-                completableFuture.complete(xtbService.getAllSymbols());
+                completableFuture.complete(xtbClient.getAllSymbols());
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -97,7 +99,7 @@ public class XtbServiceAsync {
 
         executor.submit(() -> {
             try {
-                completableFuture.complete(xtbService.getSymbol(symbol));
+                completableFuture.complete(xtbClient.getSymbol(symbol));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -111,11 +113,12 @@ public class XtbServiceAsync {
 
         executor.submit(() -> {
             try {
-                completableFuture.complete(xtbService.getPing());
+                completableFuture.complete(xtbClient.getPing());
             } catch (JSONException e) {
                 e.printStackTrace();
             }
         });
+
         return completableFuture;
     }
 
@@ -124,53 +127,54 @@ public class XtbServiceAsync {
 
         executor.submit(() -> {
             try {
-                completableFuture.complete(xtbService.getProfitCalculation(closePrice, cmd, openPrice, symbol, volume));
+                completableFuture.complete(xtbClient.getProfitCalculation(closePrice, cmd, openPrice, symbol, volume));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
         });
+
         return completableFuture;
     }
 
     public Future<Boolean> subscribeGetTicketPrice(String symbol) {
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-        streamingExecutor.submit(() -> {
-            if (xtbService.isConnected()) {
-
+        executor.submit(() -> {
+            if (xtbClient.isConnected()) {
+                xtbClient.subscribeGetTicketPrices(symbol);
+                completableFuture.complete(true);
+            }else{
+                completableFuture.complete(false);
             }
-            xtbService.subscribeGetTicketPrices(symbol);
-            xtbService.runSubscriptionStreamingReader();
-            completableFuture.complete(true);
         });
         return completableFuture;
     }
 
     public Future<Boolean> subscribeGetKeepAlive() {
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-        streamingExecutor.submit(() -> {
-            xtbService.subscribeGetKeepAlive();
-            xtbService.runSubscriptionStreamingReader();
+        executor.submit(() -> {
+            xtbClient.subscribeGetKeepAlive();
             completableFuture.complete(true);
         });
         return completableFuture;
     }
 
     public LinkedBlockingQueue<JSONObject> getSubscriptionResponsesQueue() {
-        return xtbService.getSubscriptionResponses();
+        xtbClient.runSubscriptionStreamingReader();
+        return xtbClient.getSubscriptionResponses();
     }
 
     public Future<Boolean> isConnected() {
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
 
         executor.submit(() -> {
-            completableFuture.complete(xtbService.isConnected());
+            completableFuture.complete(xtbClient.isConnected());
         });
         return completableFuture;
     }
 }
 
 
-class XtbService {
+class XtbClient {
     final private String login;
     final private String password;
 
@@ -192,7 +196,7 @@ class XtbService {
         return getWebSocket().isConnected();
     }
 
-    public XtbService(String login, String password) {
+    public XtbClient(String login, String password) {
         this.login = login;
         this.password = password;
     }
@@ -244,6 +248,7 @@ class XtbService {
         streamSessionId = response.getString("streamSessionId");
     }
 
+    @NotNull
     private JSONObject processMessage(String message) throws JSONException {
         getWebSocket().sendMessage(message);
         JSONObject response;
@@ -251,7 +256,8 @@ class XtbService {
         return response;
     }
 
-    private JSONObject getResponse(WebSocket webSocket) throws JSONException {
+    @NotNull
+    private JSONObject getResponse(@NotNull WebSocket webSocket) throws JSONException {
         JSONObject response;
         try {
             response = webSocket.getNextMessage();
@@ -261,7 +267,7 @@ class XtbService {
             response.put("Response", response);
             exception.printStackTrace();
         } catch (IOException exception) {
-            // Thread was waiting for message, but Connection was lost.
+            // Disconnected webSocket when thread was waiting for message
             if(!_stopListening){
                 exception.printStackTrace();
             }
@@ -280,12 +286,8 @@ class XtbService {
                     if (!response.has("Error")) {
                         subscriptionResponses.put(new JSONObject(response.toString()));
                     }
-                }catch (JSONException e) {
+                }catch (JSONException | InterruptedException e) {
                     e.printStackTrace();
-                }catch (InterruptedException e){
-                    if(!_stopListening){
-                        e.printStackTrace();
-                    }
                 }
             }
         };
@@ -366,34 +368,42 @@ class XtbServiceBodyMessageBuilder {
             "}" +
             "}";
 
+    @NotNull
     public static String getLoginMessage(String userId, String password) {
         return format(loginJson, userId, password);
     }
 
+    @NotNull
     public static String getAllSymbolsMessage() {
         return format(getAllSymbolsJson);
     }
 
+    @NotNull
     public static String getKeepAliveMessage(String streamSessionId) {
         return format(getKeepAliveJson, streamSessionId);
     }
 
+    @NotNull
     public static String getTickPricesMessage(String streamSessionId, String symbol) {
         return format(getTickPricesJson, streamSessionId, symbol);
     }
 
+    @NotNull
     public static String getPingJsonMessage() {
         return format(pingJson);
     }
 
+    @NotNull
     public static String getSymbolMessage(String symbol) {
         return format(getSymbolJson, symbol);
     }
 
+    @NotNull
     public static String getProfitCalculationMessage(float closePrice, int cmd, float openPrice, String symbol, float volume) {
         return format(getProfitCalculationJson, closePrice, cmd, openPrice, symbol, volume);
     }
 
+    @NotNull
     private static String format(String message, Object... parameters) {
         return String.format(message, parameters);
     }

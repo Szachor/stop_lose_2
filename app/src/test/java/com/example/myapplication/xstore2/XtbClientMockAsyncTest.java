@@ -14,13 +14,13 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class XtbServiceMockAsyncTest extends TestCase {
+public class XtbClientMockAsyncTest extends TestCase {
 
-    protected XtbServiceAsync xtbService;
+    protected XtbClientAsync xtbService;
 
     public void setUp() throws Exception {
         super.setUp();
-        xtbService = new XtbMockServiceAsync();
+        xtbService = new XtbMockClientAsync();
         xtbService.connectAsync().get(10, TimeUnit.SECONDS);
     }
 
