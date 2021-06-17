@@ -1,112 +1,113 @@
-package com.example.myapplication.xstore2;
+package com.example.myapplication.xstore2
 
-import junit.framework.TestCase;
+import junit.framework.TestCase
+import org.json.JSONException
+import java.util.concurrent.*
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-public class XtbClientAsyncTest extends TestCase {
-
-    protected XtbClientAsync xtbService;
-
-    public void setUp() throws Exception {
-        super.setUp();
-        xtbService = new XtbClientAsync("12263751", "xoh26561");
-        xtbService.connectAsync().get();
+open class XtbClientAsyncTest : TestCase() {
+    private var xtbService: XtbClientAsync? = null
+    @Throws(Exception::class)
+    public override fun setUp() {
+        super.setUp()
+        xtbService = XtbClientAsync("12263751", "xoh26561")
+        xtbService!!.connectAsync().get()
     }
 
-    public void tearDown() throws ExecutionException, InterruptedException {
-        xtbService.disconnectAsync().get();
+    @Throws(ExecutionException::class, InterruptedException::class)
+    public override fun tearDown() {
+        xtbService!!.disconnectAsync().get()
     }
 
-    public void testGetAllSymbolsAsync() throws ExecutionException, InterruptedException, JSONException {
-        JSONObject response = xtbService.getAllSymbolsAsync().get();
-        JSONArray tested_value = response.getJSONArray("returnData");
-        int tested_value_2 = tested_value.length();
-        assert (tested_value_2 > 10);
+    @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
+    fun testGetAllSymbolsAsync() {
+        val response = xtbService!!.allSymbolsAsync.get()
+        val testedValue = response.getJSONArray("returnData")
+        val testedValue2 = testedValue.length()
+        assert(testedValue2 > 10)
     }
 
-    public void testGetSymbolAsync() throws ExecutionException, InterruptedException, JSONException {
-        String symbol = "USDPLN";
-        JSONObject response = xtbService.getSymbolAsync("USDPLN").get().getJSONObject("returnData");
-        String returnedSymbol = response.get("symbol").toString();
-        assertEquals(returnedSymbol, symbol);
+    @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
+    fun testGetSymbolAsync() {
+        val symbol = "USDPLN"
+        val response = xtbService!!.getSymbolAsync("USDPLN").get().getJSONObject("returnData")
+        val returnedSymbol = response["symbol"].toString()
+        assertEquals(returnedSymbol, symbol)
     }
 
-    public void testGetSymbolAsyncNonExistingSymbol() throws ExecutionException, InterruptedException, JSONException {
-        JSONObject response = xtbService.getSymbolAsync("XXX").get();
-        String errorCode = response.getString("errorCode");
-        boolean status = response.getBoolean("status");
-
-        assertEquals("BE115", errorCode);
-        assertFalse(status);
+    @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
+    fun testGetSymbolAsyncNonExistingSymbol() {
+        val response = xtbService!!.getSymbolAsync("XXX").get()
+        val errorCode = response.getString("errorCode")
+        val status = response.getBoolean("status")
+        assertEquals("BE115", errorCode)
+        assertFalse(status)
     }
 
-    public void testGetPingAsync() throws ExecutionException, InterruptedException, JSONException {
-        boolean status = xtbService.getPingAsync().get().getBoolean("status");
-        assertTrue(status);
+    @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
+    fun testGetPingAsync() {
+        val status = xtbService!!.pingAsync.get().getBoolean("status")
+        assertTrue(status)
     }
 
-    public void testGetProfitCalculationAsyncProfitBellowZero() throws ExecutionException, InterruptedException, JSONException {
-        String requestedSymbol = "EURUSD";
-        JSONObject response = xtbService.getProfitCalculationAsync(1.2f, 1, 1.0f, requestedSymbol, 10.0f).get();
-        JSONObject result = response.getJSONObject("returnData");
-        double profit = result.getDouble("profit");
-        assertTrue(profit < 0);
+    @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
+    fun testGetProfitCalculationAsyncProfitBellowZero() {
+        val requestedSymbol = "EURUSD"
+        val response =
+            xtbService!!.getProfitCalculationAsync(1.2f, 1, 1.0f, requestedSymbol, 10.0f).get()
+        val result = response.getJSONObject("returnData")
+        val profit = result.getDouble("profit")
+        assertTrue(profit < 0)
     }
 
-    public void testGetProfitCalculationAsyncProfitZero() throws ExecutionException, InterruptedException, JSONException {
-        String requestedSymbol = "EURUSD";
-        JSONObject response = xtbService.getProfitCalculationAsync(1.0f, 1, 1.0f, requestedSymbol, 10.0f).get();
-        JSONObject result = response.getJSONObject("returnData");
-        double profit = result.getDouble("profit");
-        assertEquals(0.0, profit);
+    @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
+    fun testGetProfitCalculationAsyncProfitZero() {
+        val requestedSymbol = "EURUSD"
+        val response =
+            xtbService!!.getProfitCalculationAsync(1.0f, 1, 1.0f, requestedSymbol, 10.0f).get()
+        val result = response.getJSONObject("returnData")
+        val profit = result.getDouble("profit")
+        assertEquals(0.0, profit)
     }
 
-    public void testSubscribeGetTicketPriceStarted() throws ExecutionException, InterruptedException {
-        boolean isStarted = xtbService.subscribeGetTicketPrice("PLNUSD").get();
-        assertTrue(isStarted);
+    @Throws(ExecutionException::class, InterruptedException::class)
+    fun testSubscribeGetTicketPriceStarted() {
+        val isStarted = xtbService!!.subscribeGetTicketPrice("PLNUSD").get()
+        assertTrue(isStarted)
     }
 
-    public void testSubscribeGetKeepAliveStarted() throws ExecutionException, InterruptedException {
-        boolean isStarted = xtbService.subscribeGetKeepAlive().get();
-        assertTrue(isStarted);
+    @Throws(ExecutionException::class, InterruptedException::class)
+    fun testSubscribeGetKeepAliveStarted() {
+        val isStarted = xtbService!!.subscribeGetKeepAlive().get()
+        assertTrue(isStarted)
     }
 
-    public void testSubscribeGetKeepAliveReturnedTwoResponses() throws ExecutionException, InterruptedException, TimeoutException {
-        xtbService.subscribeGetKeepAlive().get();
-        LinkedBlockingQueue<JSONObject> queue = xtbService.getSubscriptionResponsesQueue();
-
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-
-        executor.submit(() -> {
-            int i = 0;
-            while(i<2) {
+    @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
+    fun testSubscribeGetKeepAliveReturnedTwoResponses() {
+        xtbService!!.subscribeGetKeepAlive().get()
+        val queue = xtbService!!.subscriptionResponsesQueue
+        val executor = Executors.newSingleThreadExecutor()
+        val completableFuture = CompletableFuture<Boolean>()
+        executor.submit {
+            var i = 0
+            while (i < 2) {
                 try {
-                    JSONObject response = queue.take();
-                    if (!response.getString("command").equals("keepAlive")){
-                        throw new Exception("Response seems not be OK. Expected command = keepAlive in response, but could not find it.\n" +
-                                "Response: "+ response.toString());
+                    val response = queue.take()
+                    if (response.getString("command") != "keepAlive") {
+                        throw Exception(
+                            """
+    Response seems not be OK. Expected command = keepAlive in response, but could not find it.
+    Response: $response
+    """.trimIndent()
+                        )
                     }
-                    i++;
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    i++
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
-            completableFuture.complete(true);
-        });
-
-        boolean isThreadReturningResponses = completableFuture.get(10, TimeUnit.SECONDS);
-        assertTrue(isThreadReturningResponses);
+            completableFuture.complete(true)
+        }
+        val isThreadReturningResponses = completableFuture[10, TimeUnit.SECONDS]
+        assertTrue(isThreadReturningResponses)
     }
 }

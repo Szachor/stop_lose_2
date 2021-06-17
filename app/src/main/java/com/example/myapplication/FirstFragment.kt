@@ -1,103 +1,83 @@
 package com.example.myapplication
 
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.AdapterView.OnItemClickListener
 import android.widget.ArrayAdapter
+import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
+import androidx.navigation.Navigation
 import androidx.preference.PreferenceManager
 import com.example.myapplication.databinding.FragmentFirstBinding
 import com.example.myapplication.xstore.sync.Credentials
 import com.example.myapplication.xstore.sync.Example
 import com.example.myapplication.xstore.sync.ServerData
+import java.util.*
+import java.util.function.Consumer
 
-
-/**
- * A simple [Fragment] subclass as the default destination in the navigation.
- */
-class FirstFragment2 : Fragment() {
-
-    private var _binding: FragmentFirstBinding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
-    private val binding get() = _binding!!
-
-    private var listItems: ArrayList<String> = ArrayList()
-    private lateinit var arrayAdapter: ArrayAdapter<String>
-
+class FirstFragment : Fragment() {
+    private var binding: FragmentFirstBinding? = null
+    private val listItems = ArrayList<String>()
+    private var arrayAdapter: ArrayAdapter<String>? = null
+    @RequiresApi(api = Build.VERSION_CODES.N)
     override fun onResume() {
         super.onResume()
         val preferences = PreferenceManager.getDefaultSharedPreferences(this.context)
-        val list = preferences.getStringSet("listItems", listItems.toSet())
-        list?.forEach {
+        val list = preferences.getStringSet("listItems", HashSet(listItems))
+        list!!.forEach(Consumer { it: String ->
             if (!listItems.contains(it)) {
                 listItems.add(it)
             }
-
             if (!GlobalData.getInstance().runningInstruments.contains(it)) {
-                runInstrumentListening(it)
-                GlobalData.getInstance().runningInstruments.add(it)
+                listItems.add(it)
             }
-        }
+        })
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentFirstBinding.inflate(inflater, container, false)
-        arrayAdapter = ArrayAdapter(
-            this.requireContext(),
-            R.layout.listview_item,
-            listItems
-        )
-
-        binding.listeningList.adapter = arrayAdapter
-        binding.addInstrumentButton.setOnClickListener {
-            val instrument = binding.addInstrumentText.text.toString()
-
+    ): View? {
+        binding = FragmentFirstBinding.inflate(inflater, container, false)
+        arrayAdapter = ArrayAdapter(requireContext(), R.layout.listview_item, listItems)
+        binding!!.listeningList.adapter = arrayAdapter
+        binding!!.addInstrumentButton.setOnClickListener { l: View? ->
+            val instrument = binding!!.addInstrumentText.text.toString()
             if (listItems.contains(instrument)) {
                 return@setOnClickListener
             }
-
             runInstrumentListening(instrument)
-
             listItems.add(instrument)
             GlobalData.getInstance().runningInstruments.add(instrument)
             val preferences = PreferenceManager.getDefaultSharedPreferences(this.context)
             val editor = preferences.edit()
-            val set = listItems.toSet()
+            val set = HashSet(listItems)
             editor.putStringSet("listItems", set)
             editor.apply()
-            arrayAdapter.notifyDataSetChanged()
+            arrayAdapter!!.notifyDataSetChanged()
         }
-
-        binding.listeningList.setOnItemClickListener { parent, _, position, _ ->
-            print(parent.toString())
-            val clickedItem = listItems[position]
-            val b = Bundle()
-            b.putString("Instrument", clickedItem)
-            findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment, b)
-        }
-
-        binding.buttonFirst.setOnClickListener {
-            findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
-        }
-
-        return binding.root
+        binding!!.listeningList.onItemClickListener =
+            OnItemClickListener { parent: AdapterView<*>?, view: View?, position: Int, id: Long ->
+                val clickedItem = listItems[position]
+                val b = Bundle()
+                b.putString("Instrument", clickedItem)
+                Navigation.findNavController(parent!!)
+                    .navigate(R.id.action_FirstFragment_to_SecondFragment, b)
+            }
+        return binding!!.root
     }
 
-
     private fun runInstrumentListening(instrument: String) {
+        val c = this.context
         val runnable = Runnable {
-            val context = this.context
-            val credentials = Credentials(
-                "12263751", "xoh26561"
-            )
-            val ex = Example(context)
+            val credentials = Credentials("12263751", "xoh26561")
+            val ex: Example
+            ex = Example(c)
             ex.runExample(ServerData.ServerEnum.DEMO, credentials, instrument)
         }
         Thread(runnable).start()
@@ -105,7 +85,6 @@ class FirstFragment2 : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
+        binding = null
     }
 }
-

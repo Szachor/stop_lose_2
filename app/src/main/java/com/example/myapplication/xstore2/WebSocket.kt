@@ -1,100 +1,77 @@
-package com.example.myapplication.xstore2;
+package com.example.myapplication.xstore2
 
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.*
+import java.net.InetSocketAddress
+import java.net.Socket
+import javax.net.ssl.SSLSocketFactory
 
-import org.json.JSONException;
-import org.json.JSONObject;
+internal open class WebSocket {
+    private var webSocketEndpoint: String? = null
+    private var webSocketPort = 0
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-
-import javax.net.SocketFactory;
-import javax.net.ssl.SSLSocketFactory;
-
-class WebSocket {
-
-    String webSocketEndpoint;
-    int webSocketPort;
-
-    public WebSocket(String webSocketEndpoint, int webSocketPort) {
-        this.webSocketEndpoint = webSocketEndpoint;
-        this.webSocketPort = webSocketPort;
-
-        initSocketWriter();
+    constructor(webSocketEndpoint: String?, webSocketPort: Int) {
+        this.webSocketEndpoint = webSocketEndpoint
+        this.webSocketPort = webSocketPort
+        initSocketWriter()
     }
 
-    protected WebSocket() {
-    }
+    protected constructor()
 
-    private Socket socketClient;
-
-    private InetSocketAddress _socketAddress;
-
-    private InetSocketAddress getInetSocketAddress() {
-        return _socketAddress;
-    }
-
-    private PrintStream _apiSocketWriter;
-
-    private PrintStream getSocketWriter() {
-        return _apiSocketWriter;
-    }
-
-    private void initSocketWriter() {
-        _socketAddress = new InetSocketAddress(webSocketEndpoint, webSocketPort);
-        SocketFactory socketFactory = SSLSocketFactory.getDefault();
-        InetSocketAddress socketAddress = getInetSocketAddress();
+    private var socketClient: Socket? = null
+    private var socketWriter: PrintStream? = null
+    private fun initSocketWriter() {
+        val socketAddress = InetSocketAddress(webSocketEndpoint, webSocketPort)
+        val socketFactory = SSLSocketFactory.getDefault()
         try {
-            socketClient = socketFactory.createSocket(socketAddress.getAddress(), socketAddress.getPort());
-        } catch (IOException exception) {
-            exception.printStackTrace();
+            socketClient = socketFactory.createSocket(socketAddress.address, socketAddress.port)
+        } catch (exception: IOException) {
+            exception.printStackTrace()
         }
         try {
-            _apiSocketWriter = new PrintStream(socketClient.getOutputStream());
-        } catch (IOException exception) {
-            exception.printStackTrace();
+            socketWriter = PrintStream(socketClient!!.getOutputStream())
+        } catch (exception: IOException) {
+            exception.printStackTrace()
         }
     }
 
-    private BufferedReader _socketReader;
-
-    private BufferedReader getSocketReader() {
-        if (_socketReader == null) {
-            InputStream streamingReadStream = null;
-            try {
-                streamingReadStream = socketClient.getInputStream();
-            } catch (IOException exception) {
-                exception.printStackTrace();
+    private var _socketReader: BufferedReader? = null
+    private val socketReader: BufferedReader
+        get() {
+            if (_socketReader == null) {
+                var streamingReadStream: InputStream? = null
+                try {
+                    streamingReadStream = socketClient!!.getInputStream()
+                } catch (exception: IOException) {
+                    exception.printStackTrace()
+                }
+                _socketReader = BufferedReader(InputStreamReader(streamingReadStream))
             }
-            _socketReader = new BufferedReader(new InputStreamReader(streamingReadStream));
+            return _socketReader!!
         }
-        return _socketReader;
+
+    open fun sendMessage(message: String?) {
+        socketWriter!!.print(message)
     }
 
-    public void sendMessage(String message) {
-        getSocketWriter().print(message);
-    }
+    @get:Throws(JSONException::class, IOException::class)
+    open val nextMessage: JSONObject?
+        get() {
+            var line: String
+            val response = StringBuilder()
+            line = socketReader.readLine()
+            do {
+                response.append(line)
+                line = socketReader.readLine()
+            } while (line != "")
+            return JSONObject(response.toString())
+        }
+    open val isConnected
+        get() = !socketClient!!.isClosed
 
-    public JSONObject getNextMessage() throws JSONException, IOException {
-        String line;
-        StringBuilder response = new StringBuilder();
-        line = getSocketReader().readLine();
-        do {
-            response.append(line);
-            line = getSocketReader().readLine();
-        } while (!line.equals(""));
-        return new JSONObject(response.toString());
-    }
-
-    public boolean isConnected() {
-        return !socketClient.isClosed();
-    }
-
-    public void disconnect() throws IOException {
-        socketClient.close();
+    @Throws(IOException::class)
+    open fun disconnect() {
+        socketClient!!.close()
     }
 }

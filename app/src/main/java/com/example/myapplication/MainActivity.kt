@@ -22,10 +22,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val preferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
-        val editor = preferences.edit()
-        editor.clear()
-        editor.apply()
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

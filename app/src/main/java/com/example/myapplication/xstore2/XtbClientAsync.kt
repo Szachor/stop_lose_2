@@ -1,19 +1,12 @@
-package com.example.myapplication.xstore2;
+package com.example.myapplication.xstore2
 
-import org.jetbrains.annotations.NotNull;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-
-
-
-
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.IOException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.LinkedBlockingQueue
 
 /*
  *
@@ -24,46 +17,38 @@ import java.util.concurrent.LinkedBlockingQueue;
  * User should send requests in 200 ms intervals. This rule can be broken, but if it happens 6 times in a row the connection is dropped.
  *
  * */
-
 /*interface MyInterface {
     Boolean doSomething() throws JSONException, IOException;
 }*/
-public class XtbClientAsync {
-    private final XtbClient xtbClient;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+open class XtbClientAsync {
+    private val xtbClient: XtbClient
+    private val executor = Executors.newSingleThreadExecutor()
 
-
-    public XtbClientAsync(String login, String password) {
-        this.xtbClient = new XtbClient(login, password);
+    constructor(login: String?, password: String?) {
+        xtbClient = XtbClient(login, password)
     }
 
-    protected XtbClientAsync(XtbClient xtbClient) {
-        this.xtbClient = xtbClient;
+    protected constructor(xtbClient: XtbClient) {
+        this.xtbClient = xtbClient
     }
 
-    public Future<Boolean> connectAsync() {
-        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
+    fun connectAsync(): Future<Boolean> {
+        val completableFuture = CompletableFuture<Boolean>()
         //MyInterface myInterface = xtbService::connect;
-
-        executor.submit(() -> {
+        executor.submit {
             try {
-                completableFuture.complete(xtbClient.connect());
-            } catch (Exception e) {
-                e.printStackTrace();
+                completableFuture.complete(xtbClient.connect())
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        });
-
-        return completableFuture;
+        }
+        return completableFuture
     }
 
-    public Future<Boolean> disconnectAsync() {
-        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-
-        executor.submit(() -> {
-            completableFuture.complete(xtbClient.disconnect());
-        });
-
-        return completableFuture;
+    fun disconnectAsync(): Future<Boolean> {
+        val completableFuture = CompletableFuture<Boolean>()
+        executor.submit { completableFuture.complete(xtbClient.disconnect()) }
+        return completableFuture
     }
 
     /*
@@ -80,284 +65,287 @@ public class XtbClientAsync {
 
         return completableFuture;
     }*/
+    val allSymbolsAsync: Future<JSONObject>
+        get() {
+            val completableFuture = CompletableFuture<JSONObject>()
+            executor.submit {
+                try {
+                    completableFuture.complete(xtbClient.allSymbols)
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                }
+            }
+            return completableFuture
+        }
 
-    public Future<JSONObject> getAllSymbolsAsync() {
-        CompletableFuture<JSONObject> completableFuture = new CompletableFuture<>();
-        executor.submit(() -> {
+    fun getSymbolAsync(symbol: String?): Future<JSONObject> {
+        val completableFuture = CompletableFuture<JSONObject>()
+        executor.submit {
             try {
-                completableFuture.complete(xtbClient.getAllSymbols());
-            } catch (JSONException e) {
-                e.printStackTrace();
+                completableFuture.complete(xtbClient.getSymbol(symbol))
+            } catch (e: JSONException) {
+                e.printStackTrace()
             }
-        });
-
-        return completableFuture;
+        }
+        return completableFuture
     }
 
-    public Future<JSONObject> getSymbolAsync(String symbol) {
-        CompletableFuture<JSONObject> completableFuture = new CompletableFuture<>();
+    val pingAsync: Future<JSONObject>
+        get() {
+            val completableFuture = CompletableFuture<JSONObject>()
+            executor.submit {
+                try {
+                    completableFuture.complete(xtbClient.ping)
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                }
+            }
+            return completableFuture
+        }
 
-        executor.submit(() -> {
+    fun getProfitCalculationAsync(
+        closePrice: Float,
+        cmd: Int,
+        openPrice: Float,
+        symbol: String?,
+        volume: Float
+    ): Future<JSONObject> {
+        val completableFuture = CompletableFuture<JSONObject>()
+        executor.submit {
             try {
-                completableFuture.complete(xtbClient.getSymbol(symbol));
-            } catch (JSONException e) {
-                e.printStackTrace();
+                completableFuture.complete(
+                    xtbClient.getProfitCalculation(
+                        closePrice,
+                        cmd,
+                        openPrice,
+                        symbol,
+                        volume
+                    )
+                )
+            } catch (e: JSONException) {
+                e.printStackTrace()
             }
-        });
-
-        return completableFuture;
+        }
+        return completableFuture
     }
 
-    public Future<JSONObject> getPingAsync() {
-        CompletableFuture<JSONObject> completableFuture = new CompletableFuture<>();
-
-        executor.submit(() -> {
-            try {
-                completableFuture.complete(xtbClient.getPing());
-            } catch (JSONException e) {
-                e.printStackTrace();
+    fun subscribeGetTicketPrice(symbol: String?): Future<Boolean> {
+        val completableFuture = CompletableFuture<Boolean>()
+        executor.submit {
+            if (xtbClient.isConnected) {
+                xtbClient.subscribeGetTicketPrices(symbol)
+                completableFuture.complete(true)
+            } else {
+                completableFuture.complete(false)
             }
-        });
-
-        return completableFuture;
+        }
+        return completableFuture
     }
 
-    public Future<JSONObject> getProfitCalculationAsync(float closePrice, int cmd, float openPrice, String symbol, float volume) {
-        CompletableFuture<JSONObject> completableFuture = new CompletableFuture<>();
-
-        executor.submit(() -> {
-            try {
-                completableFuture.complete(xtbClient.getProfitCalculation(closePrice, cmd, openPrice, symbol, volume));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        });
-
-        return completableFuture;
+    fun subscribeGetKeepAlive(): Future<Boolean> {
+        val completableFuture = CompletableFuture<Boolean>()
+        executor.submit {
+            xtbClient.subscribeGetKeepAlive()
+            completableFuture.complete(true)
+        }
+        return completableFuture
     }
 
-    public Future<Boolean> subscribeGetTicketPrice(String symbol) {
-        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-        executor.submit(() -> {
-            if (xtbClient.isConnected()) {
-                xtbClient.subscribeGetTicketPrices(symbol);
-                completableFuture.complete(true);
-            }else{
-                completableFuture.complete(false);
-            }
-        });
-        return completableFuture;
-    }
-
-    public Future<Boolean> subscribeGetKeepAlive() {
-        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-        executor.submit(() -> {
-            xtbClient.subscribeGetKeepAlive();
-            completableFuture.complete(true);
-        });
-        return completableFuture;
-    }
-
-    public LinkedBlockingQueue<JSONObject> getSubscriptionResponsesQueue() {
-        xtbClient.runSubscriptionStreamingReader();
-        return xtbClient.getSubscriptionResponses();
-    }
-
-    public Future<Boolean> isConnected() {
-        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-
-        executor.submit(() -> {
-            completableFuture.complete(xtbClient.isConnected());
-        });
-        return completableFuture;
-    }
+    val subscriptionResponsesQueue: LinkedBlockingQueue<JSONObject>
+        get() {
+            xtbClient.runSubscriptionStreamingReader()
+            return xtbClient.subscriptionResponses
+        }
+    val isConnected: Future<Boolean>
+        get() {
+            val completableFuture = CompletableFuture<Boolean>()
+            executor.submit { completableFuture.complete(xtbClient.isConnected) }
+            return completableFuture
+        }
 }
 
-
-class XtbClient {
-    final private String login;
-    final private String password;
-
-    private boolean _stopListening = false;
+open class XtbClient(private val login: String?, private val password: String?) {
+    private var _stopListening = false
 
     // This WebSocket for main connection
     // It is used for the Request-Reply commands.
-    protected WebSocket _webSocket;
+    internal var webSocket: WebSocket? = null
 
     //
-    protected WebSocket _streamingWebSocket;
-    protected static String streamSessionId;
-    private final LinkedBlockingQueue<JSONObject> subscriptionResponses = new LinkedBlockingQueue<>();
+    internal var streamingWebSocket: WebSocket? = null
+    val subscriptionResponses = LinkedBlockingQueue<JSONObject>()
+    val isConnected: Boolean
+        get() = if (webSocket == null) {
+            false
+        } else webSocket!!.isConnected
 
-    public boolean isConnected() {
-        if (getWebSocket() == null) {
-            return false;
+    @Throws(JSONException::class)
+    open fun connect(): Boolean {
+        if (isConnected) {
+            return true
         }
-        return getWebSocket().isConnected();
-    }
-
-    public XtbClient(String login, String password) {
-        this.login = login;
-        this.password = password;
-    }
-
-    public LinkedBlockingQueue<JSONObject> getSubscriptionResponses() {
-        return subscriptionResponses;
-    }
-
-    private WebSocket getWebSocket() {
-        return _webSocket;
-    }
-
-
-    private WebSocket getStreamingWebSocket() {
-        return _streamingWebSocket;
-    }
-
-    public Boolean connect() throws JSONException {
-        if (isConnected()) {
-            return true;
-        }
-
-        _webSocket = new XtbWebSocket(false);
-        _streamingWebSocket = new XtbWebSocket(true);
+        webSocket = XtbWebSocket(false)
+        streamingWebSocket = XtbWebSocket(true)
 
         // Login should be moved from this place somewhere else...
-        this.login();
-        _stopListening = false;
-        return true;
+        login()
+        _stopListening = false
+        return true
     }
 
-    public Boolean disconnect() {
-        _stopListening = true;
+    fun disconnect(): Boolean {
+        _stopListening = true
         try {
-            _webSocket.disconnect();
-        } catch (IOException exception) {
-            exception.printStackTrace();
+            webSocket!!.disconnect()
+        } catch (exception: IOException) {
+            exception.printStackTrace()
         }
         try {
-            _streamingWebSocket.disconnect();
-        } catch (IOException exception) {
-            exception.printStackTrace();
+            streamingWebSocket!!.disconnect()
+        } catch (exception: IOException) {
+            exception.printStackTrace()
         }
-        return true;
+        return true
     }
 
-    protected void login() throws JSONException {
-        JSONObject response = processMessage(XtbServiceBodyMessageBuilder.getLoginMessage(this.login, this.password));
-        streamSessionId = response.getString("streamSessionId");
+    @Throws(JSONException::class)
+    protected fun login() {
+        val response = processMessage(XtbServiceBodyMessageBuilder.getLoginMessage(login, password))
+        streamSessionId = response.getString("streamSessionId")
     }
 
-    @NotNull
-    private JSONObject processMessage(String message) throws JSONException {
-        getWebSocket().sendMessage(message);
-        JSONObject response;
-        response = getResponse(getWebSocket());
-        return response;
+    @Throws(JSONException::class)
+    private fun processMessage(message: String): JSONObject {
+        webSocket!!.sendMessage(message)
+        return getResponse(webSocket!!)
     }
 
-    @NotNull
-    private JSONObject getResponse(@NotNull WebSocket webSocket) throws JSONException {
-        JSONObject response;
+    @Throws(JSONException::class)
+    private fun getResponse(webSocket: WebSocket): JSONObject {
+        var response: JSONObject
         try {
-            response = webSocket.getNextMessage();
-        } catch (JSONException exception) {
-            response = new JSONObject();
-            response.put("Error", "Couldn't parse response to the JSON format");
-            response.put("Response", response);
-            exception.printStackTrace();
-        } catch (IOException exception) {
+            response = webSocket.nextMessage!!
+        } catch (exception: JSONException) {
+            response = JSONObject()
+            response.put("Error", "Couldn't parse response to the JSON format")
+            response.put("Response", response)
+            exception.printStackTrace()
+        } catch (exception: IOException) {
             // Disconnected webSocket when thread was waiting for message
-            if(!_stopListening){
-                exception.printStackTrace();
+            if (!_stopListening) {
+                exception.printStackTrace()
             }
-            response = new JSONObject();
-            response.put("Error", "Lost connection");
+            response = JSONObject()
+            response.put("Error", "Lost connection")
         }
-        return new JSONObject(response.toString());
+        return JSONObject(response.toString())
     }
 
-    public void runSubscriptionStreamingReader() {
-        Runnable runnable = () -> {
-            while (!_stopListening && isConnected()) {
-                JSONObject response;
+    fun runSubscriptionStreamingReader() {
+        val runnable = Runnable {
+            while (!_stopListening && isConnected) {
+                var response: JSONObject
                 try {
-                    response = getResponse(getStreamingWebSocket());
+                    response = getResponse(streamingWebSocket!!)
                     if (!response.has("Error")) {
-                        subscriptionResponses.put(new JSONObject(response.toString()));
+                        subscriptionResponses.put(JSONObject(response.toString()))
                     }
-                }catch (JSONException | InterruptedException e) {
-                    e.printStackTrace();
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                } catch (e: InterruptedException) {
+                    e.printStackTrace()
                 }
             }
-        };
-        Thread t = new Thread(runnable);
-        t.start();
+        }
+        val t = Thread(runnable)
+        t.start()
     }
 
-    protected JSONObject getAllSymbols() throws JSONException {
-        return processMessage(XtbServiceBodyMessageBuilder.getAllSymbolsMessage());
+    @get:Throws(JSONException::class)
+    val allSymbols: JSONObject
+        get() = processMessage(XtbServiceBodyMessageBuilder.allSymbolsMessage)
+
+    @get:Throws(JSONException::class)
+    val ping: JSONObject
+        get() = processMessage(XtbServiceBodyMessageBuilder.pingJsonMessage)
+
+    @Throws(JSONException::class)
+    fun getProfitCalculation(
+        closePrice: Float,
+        cmd: Int,
+        openPrice: Float,
+        symbol: String?,
+        volume: Float
+    ): JSONObject {
+        return processMessage(
+            XtbServiceBodyMessageBuilder.getProfitCalculationMessage(
+                closePrice,
+                cmd,
+                openPrice,
+                symbol,
+                volume
+            )
+        )
     }
 
-    protected JSONObject getPing() throws JSONException {
-        return processMessage(XtbServiceBodyMessageBuilder.getPingJsonMessage());
+    @Throws(JSONException::class)
+    fun getSymbol(symbol: String?): JSONObject {
+        return processMessage(XtbServiceBodyMessageBuilder.getSymbolMessage(symbol))
     }
 
-    protected JSONObject getProfitCalculation(float closePrice, int cmd, float openPrice, String symbol, float volume) throws JSONException {
-        return processMessage(XtbServiceBodyMessageBuilder.getProfitCalculationMessage(closePrice, cmd, openPrice, symbol, volume));
+    fun subscribeGetKeepAlive() {
+        val streamingWebSocket = streamingWebSocket
+        streamingWebSocket!!.sendMessage(
+            XtbServiceBodyMessageBuilder.getKeepAliveMessage(
+                streamSessionId
+            )
+        )
     }
 
-    protected JSONObject getSymbol(String symbol) throws JSONException {
-        return processMessage(XtbServiceBodyMessageBuilder.getSymbolMessage(symbol));
+    fun subscribeGetTicketPrices(symbol: String?) {
+        val streamingWebSocket = streamingWebSocket
+        streamingWebSocket!!.sendMessage(
+            XtbServiceBodyMessageBuilder.getTickPricesMessage(
+                streamSessionId, symbol
+            )
+        )
     }
 
-    protected void subscribeGetKeepAlive() {
-        WebSocket streamingWebSocket = getStreamingWebSocket();
-        streamingWebSocket.sendMessage(XtbServiceBodyMessageBuilder.getKeepAliveMessage(streamSessionId));
-    }
-
-    public void subscribeGetTicketPrices(String symbol) {
-        WebSocket streamingWebSocket = getStreamingWebSocket();
-        streamingWebSocket.sendMessage(XtbServiceBodyMessageBuilder.getTickPricesMessage(streamSessionId, symbol));
+    companion object {
+        protected var streamSessionId: String? = null
     }
 }
 
-class XtbServiceBodyMessageBuilder {
-    static final private String loginJson = "{" +
+internal object XtbServiceBodyMessageBuilder {
+    private const val loginJson = "{" +
             "\"command\" : \"login\"," +
             "\"arguments\" : {" +
             "\"userId\" : \"%s\"," +
             "\"password\": \"%s\"" +
             "}" +
-            "}";
-
-    static final private String getAllSymbolsJson = "{" +
+            "}"
+    private const val getAllSymbolsJson = "{" +
             "\"command\": \"getAllSymbols\"" +
-            "}";
-
-    static final private String getKeepAliveJson = "{" +
+            "}"
+    private const val getKeepAliveJson = "{" +
             "\"command\" : \"getKeepAlive\"," +
             "\"streamSessionId\" : \"%s\"" +
-            "}";
-
-    static final private String getTickPricesJson = "{" +
+            "}"
+    private const val getTickPricesJson = "{" +
             "\"command\" : \"getTickPrices\"," +
             "\"streamSessionId\" : \"%s\"," +
             "\"symbol\": \"%s\"" +
-            "}";
-
-    static final private String pingJson = "{" +
+            "}"
+    private const val pingJson = "{" +
             "\"command\": \"ping\"" +
-            "}";
-
-    static final private String getSymbolJson = "{" +
+            "}"
+    private const val getSymbolJson = "{" +
             "\"command\": \"getSymbol\"," +
             "\"arguments\": {" +
             "\"symbol\": \"%s\"" +
             "}" +
-            "}";
-
-    static final private String getProfitCalculationJson = "{" +
+            "}"
+    private const val getProfitCalculationJson = "{" +
             "\"command\": \"getProfitCalculation\"," +
             "\"arguments\": {" +
             "\"closePrice\": %s," +
@@ -366,45 +354,41 @@ class XtbServiceBodyMessageBuilder {
             "\"symbol\": \"%s\"," +
             "\"volume\": %s" +
             "}" +
-            "}";
+            "}"
 
-    @NotNull
-    public static String getLoginMessage(String userId, String password) {
-        return format(loginJson, userId, password);
+    fun getLoginMessage(userId: String?, password: String?): String {
+        return format(loginJson, userId!!, password!!)
     }
 
-    @NotNull
-    public static String getAllSymbolsMessage() {
-        return format(getAllSymbolsJson);
+    val allSymbolsMessage: String
+        get() = format(getAllSymbolsJson)
+
+    fun getKeepAliveMessage(streamSessionId: String?): String {
+        return format(getKeepAliveJson, streamSessionId!!)
     }
 
-    @NotNull
-    public static String getKeepAliveMessage(String streamSessionId) {
-        return format(getKeepAliveJson, streamSessionId);
+    fun getTickPricesMessage(streamSessionId: String?, symbol: String?): String {
+        return format(getTickPricesJson, streamSessionId!!, symbol!!)
     }
 
-    @NotNull
-    public static String getTickPricesMessage(String streamSessionId, String symbol) {
-        return format(getTickPricesJson, streamSessionId, symbol);
+    val pingJsonMessage: String
+        get() = format(pingJson)
+
+    fun getSymbolMessage(symbol: String?): String {
+        return format(getSymbolJson, symbol!!)
     }
 
-    @NotNull
-    public static String getPingJsonMessage() {
-        return format(pingJson);
+    fun getProfitCalculationMessage(
+        closePrice: Float,
+        cmd: Int,
+        openPrice: Float,
+        symbol: String?,
+        volume: Float
+    ): String {
+        return format(getProfitCalculationJson, closePrice, cmd, openPrice, symbol!!, volume)
     }
 
-    @NotNull
-    public static String getSymbolMessage(String symbol) {
-        return format(getSymbolJson, symbol);
-    }
-
-    @NotNull
-    public static String getProfitCalculationMessage(float closePrice, int cmd, float openPrice, String symbol, float volume) {
-        return format(getProfitCalculationJson, closePrice, cmd, openPrice, symbol, volume);
-    }
-
-    @NotNull
-    private static String format(String message, Object... parameters) {
-        return String.format(message, parameters);
+    private fun format(message: String, vararg parameters: Any): String {
+        return String.format(message, *parameters)
     }
 }

@@ -1,235 +1,224 @@
-package com.example.myapplication.xstore2;
+package com.example.myapplication.xstore2
 
-import android.os.SystemClock;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.concurrent.LinkedBlockingQueue;
+import android.os.SystemClock
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.IOException
+import java.util.concurrent.LinkedBlockingQueue
 
 /*class XtbWebSocketMockSettings {
 
 }*/
+internal class XtbWebSocketMock(var isStreamingWebSocket: Boolean) : WebSocket() {
 
-
-class XtbWebSocketMock extends WebSocket {
-    boolean isConnected = true;
-    boolean isStreamingWebSocket;
     //private XtbWebSocketMockSettings webSocketMockSettings;
-
-    private final LinkedBlockingQueue<JSONObject> responses = new LinkedBlockingQueue<>();
-
-    public XtbWebSocketMock(Boolean isStreamingWebSocket) {
-        super();
-        this.isStreamingWebSocket = isStreamingWebSocket;
-    }
-
-    @Override
-    public void sendMessage(String message) {
+    private val responses = LinkedBlockingQueue<JSONObject>()
+    override fun sendMessage(message: String?) {
         try {
-            JSONObject jsonMessage = new JSONObject(message);
-            String command = jsonMessage.getString("command");
-            switch (command) {
-                case "login":
-                    String loginResponse = "{\n" +
-                            "\t\"status\": true,\n" +
-                            "\t\"streamSessionId\": \"8469308861804289383\"\n" +
-                            "}";
-                    JSONObject loginResponseJson = new JSONObject(loginResponse);
-                    responses.put(loginResponseJson);
-                    break;
-                case "getTickPrices":
-                    Runnable runnable = () -> {
-                        for(int i = 0;i<10;i++){
-                            String getTickPricesResponse = "{\n" +
-                                    "\t\"ask\": 4000.0,\n" +
-                                    "\t\"askVolume\": 15000,\n" +
-                                    "\t\"bid\": 4000.0,\n" +
-                                    "\t\"bidVolume\": 16000,\n" +
-                                    "\t\"high\": 4000.0,\n" +
-                                    "\t\"level\": 0,\n" +
-                                    "\t\"low\": 3500.0,\n" +
-                                    "\t\"quoteId\": 0,\n" +
-                                    "\t\"spreadRaw\": 0.000003,\n" +
-                                    "\t\"spreadTable\": 0.00042,\n" +
-                                    "\t\"symbol\": \"KOMB.CZ\",\n" +
-                                    "\t\"timestamp\": 1272529161605\n" +
-                                    "}";
-                            SystemClock.sleep(2000);
+            val jsonMessage = JSONObject(message.toString())
+            when (val command = jsonMessage.getString("command")) {
+                "login" -> {
+                    val loginResponse = """{
+	"status": true,
+	"streamSessionId": "8469308861804289383"
+}"""
+                    val loginResponseJson = JSONObject(loginResponse)
+                    responses.put(loginResponseJson)
+                }
+                "getTickPrices" -> {
+                    val runnable = Runnable {
+                        var i = 0
+                        while (i < 10) {
+                            val getTickPricesResponse = """{
+	"ask": 4000.0,
+	"askVolume": 15000,
+	"bid": 4000.0,
+	"bidVolume": 16000,
+	"high": 4000.0,
+	"level": 0,
+	"low": 3500.0,
+	"quoteId": 0,
+	"spreadRaw": 0.000003,
+	"spreadTable": 0.00042,
+	"symbol": "KOMB.CZ",
+	"timestamp": 1272529161605
+}"""
+                            SystemClock.sleep(2000)
                             try {
-                                JSONObject getTickPricesResponseJson = new JSONObject(getTickPricesResponse);
-                                responses.put(wrapResponse(command, getTickPricesResponseJson));
-                            } catch (JSONException | InterruptedException e) {
-                                e.printStackTrace();
+                                val getTickPricesResponseJson = JSONObject(getTickPricesResponse)
+                                responses.put(wrapResponse(command, getTickPricesResponseJson))
+                            } catch (e: JSONException) {
+                                e.printStackTrace()
+                            } catch (e: InterruptedException) {
+                                e.printStackTrace()
                             }
+                            i++
                         }
-                    };
-                    new Thread(runnable).start();
-                    break;
-
-                case "getSymbol":
-                    String getSymbolResponse = "{\n" +
-                            "\t\"ask\": 4000.0,\n" +
-                            "\t\"bid\": 4000.0,\n" +
-                            "\t\"categoryName\": \"Forex\",\n" +
-                            "\t\"contractSize\": 100000,\n" +
-                            "\t\"currency\": \"USD\",\n" +
-                            "\t\"currencyPair\": true,\n" +
-                            "\t\"currencyProfit\": \"SEK\",\n" +
-                            "\t\"description\": \"USD/PLN\",\n" +
-                            "\t\"expiration\": null,\n" +
-                            "\t\"groupName\": \"Minor\",\n" +
-                            "\t\"high\": 4000.0,\n" +
-                            "\t\"initialMargin\": 0,\n" +
-                            "\t\"instantMaxVolume\": 0,\n" +
-                            "\t\"leverage\": 1.5,\n" +
-                            "\t\"longOnly\": false,\n" +
-                            "\t\"lotMax\": 10.0,\n" +
-                            "\t\"lotMin\": 0.1,\n" +
-                            "\t\"lotStep\": 0.1,\n" +
-                            "\t\"low\": 3500.0,\n" +
-                            "\t\"marginHedged\": 0,\n" +
-                            "\t\"marginHedgedStrong\": false,\n" +
-                            "\t\"marginMaintenance\": null,\n" +
-                            "\t\"marginMode\": 101,\n" +
-                            "\t\"percentage\": 100.0,\n" +
-                            "\t\"precision\": 2,\n" +
-                            "\t\"profitMode\": 5,\n" +
-                            "\t\"quoteId\": 1,\n" +
-                            "\t\"shortSelling\": true,\n" +
-                            "\t\"spreadRaw\": 0.000003,\n" +
-                            "\t\"spreadTable\": 0.00042,\n" +
-                            "\t\"starting\": null,\n" +
-                            "\t\"stepRuleId\": 1,\n" +
-                            "\t\"stopsLevel\": 0,\n" +
-                            "\t\"swap_rollover3days\": 0,\n" +
-                            "\t\"swapEnable\": true,\n" +
-                            "\t\"swapLong\": -2.55929,\n" +
-                            "\t\"swapShort\": 0.131,\n" +
-                            "\t\"swapType\": 0,\n" +
-                            "\t\"symbol\": \"USDPLN\",\n" +
-                            "\t\"tickSize\": 1.0,\n" +
-                            "\t\"tickValue\": 1.0,\n" +
-                            "\t\"time\": 1272446136891,\n" +
-                            "\t\"timeString\": \"Thu May 23 12:23:44 EDT 2013\",\n" +
-                            "\t\"trailingEnabled\": true,\n" +
-                            "\t\"type\": 21\n" +
-                            "}";
-                    JSONObject getSymbolResponseJson = new JSONObject(getSymbolResponse);
-                    responses.put(wrapResponse(command, getSymbolResponseJson));
-                    break;
-                case "getAllSymbols":
-                    String getAllSymbolsResponse = "[{\n" +
-                            "\t\"ask\": 4000.0,\n" +
-                            "\t\"bid\": 4000.0,\n" +
-                            "\t\"categoryName\": \"Forex\",\n" +
-                            "\t\"contractSize\": 100000,\n" +
-                            "\t\"currency\": \"USD\",\n" +
-                            "\t\"currencyPair\": true,\n" +
-                            "\t\"currencyProfit\": \"SEK\",\n" +
-                            "\t\"description\": \"USD/PLN\",\n" +
-                            "\t\"expiration\": null,\n" +
-                            "\t\"groupName\": \"Minor\",\n" +
-                            "\t\"high\": 4000.0,\n" +
-                            "\t\"initialMargin\": 0,\n" +
-                            "\t\"instantMaxVolume\": 0,\n" +
-                            "\t\"leverage\": 1.5,\n" +
-                            "\t\"longOnly\": false,\n" +
-                            "\t\"lotMax\": 10.0,\n" +
-                            "\t\"lotMin\": 0.1,\n" +
-                            "\t\"lotStep\": 0.1,\n" +
-                            "\t\"low\": 3500.0,\n" +
-                            "\t\"marginHedged\": 0,\n" +
-                            "\t\"marginHedgedStrong\": false,\n" +
-                            "\t\"marginMaintenance\": null,\n" +
-                            "\t\"marginMode\": 101,\n" +
-                            "\t\"percentage\": 100.0,\n" +
-                            "\t\"precision\": 2,\n" +
-                            "\t\"profitMode\": 5,\n" +
-                            "\t\"quoteId\": 1,\n" +
-                            "\t\"shortSelling\": true,\n" +
-                            "\t\"spreadRaw\": 0.000003,\n" +
-                            "\t\"spreadTable\": 0.00042,\n" +
-                            "\t\"starting\": null,\n" +
-                            "\t\"stepRuleId\": 1,\n" +
-                            "\t\"stopsLevel\": 0,\n" +
-                            "\t\"swap_rollover3days\": 0,\n" +
-                            "\t\"swapEnable\": true,\n" +
-                            "\t\"swapLong\": -2.55929,\n" +
-                            "\t\"swapShort\": 0.131,\n" +
-                            "\t\"swapType\": 0,\n" +
-                            "\t\"symbol\": \"USDPLN\",\n" +
-                            "\t\"tickSize\": 1.0,\n" +
-                            "\t\"tickValue\": 1.0,\n" +
-                            "\t\"time\": 1272446136891,\n" +
-                            "\t\"timeString\": \"Thu May 23 12:23:44 EDT 2013\",\n" +
-                            "\t\"trailingEnabled\": true,\n" +
-                            "\t\"type\": 21\n" +
-                            "}]";
-                    JSONArray getAllSymbolsResponseJson = new JSONArray(getAllSymbolsResponse);
-                    responses.put(wrapResponse(command, getAllSymbolsResponseJson));
-                    break;
-                case "getProfitCalculation":
-                    String getProfitCalculationResponse = "{\n" +
-                            "\t\"order\": 7497776,\n" +
-                            "\t\"order2\": 7497777,\n" +
-                            "\t\"position\": 7497776,\n" +
-                            "\t\"profit\": 7076.52\n" +
-                            "}";
-                    JSONObject getProfitCalculationResponseJson = new JSONObject(getProfitCalculationResponse);
-                    responses.put(wrapResponse(command, getProfitCalculationResponseJson));
-                    break;
-                case "ping":
-                    String pingResponse = "{\n" +
-                            "\t\"status\": true\t\n" +
-                            "}";
-                    JSONObject pingResponseJson = new JSONObject(pingResponse);
-                    responses.put(pingResponseJson);
-                    break;
-                default:
-                    throw new IllegalStateException("Unexpected value: " + command);
+                    }
+                    Thread(runnable).start()
+                }
+                "getSymbol" -> {
+                    val getSymbolResponse = """{
+	"ask": 4000.0,
+	"bid": 4000.0,
+	"categoryName": "Forex",
+	"contractSize": 100000,
+	"currency": "USD",
+	"currencyPair": true,
+	"currencyProfit": "SEK",
+	"description": "USD/PLN",
+	"expiration": null,
+	"groupName": "Minor",
+	"high": 4000.0,
+	"initialMargin": 0,
+	"instantMaxVolume": 0,
+	"leverage": 1.5,
+	"longOnly": false,
+	"lotMax": 10.0,
+	"lotMin": 0.1,
+	"lotStep": 0.1,
+	"low": 3500.0,
+	"marginHedged": 0,
+	"marginHedgedStrong": false,
+	"marginMaintenance": null,
+	"marginMode": 101,
+	"percentage": 100.0,
+	"precision": 2,
+	"profitMode": 5,
+	"quoteId": 1,
+	"shortSelling": true,
+	"spreadRaw": 0.000003,
+	"spreadTable": 0.00042,
+	"starting": null,
+	"stepRuleId": 1,
+	"stopsLevel": 0,
+	"swap_rollover3days": 0,
+	"swapEnable": true,
+	"swapLong": -2.55929,
+	"swapShort": 0.131,
+	"swapType": 0,
+	"symbol": "USDPLN",
+	"tickSize": 1.0,
+	"tickValue": 1.0,
+	"time": 1272446136891,
+	"timeString": "Thu May 23 12:23:44 EDT 2013",
+	"trailingEnabled": true,
+	"type": 21
+}"""
+                    val getSymbolResponseJson = JSONObject(getSymbolResponse)
+                    responses.put(wrapResponse(command, getSymbolResponseJson))
+                }
+                "getAllSymbols" -> {
+                    val getAllSymbolsResponse = """[{
+	"ask": 4000.0,
+	"bid": 4000.0,
+	"categoryName": "Forex",
+	"contractSize": 100000,
+	"currency": "USD",
+	"currencyPair": true,
+	"currencyProfit": "SEK",
+	"description": "USD/PLN",
+	"expiration": null,
+	"groupName": "Minor",
+	"high": 4000.0,
+	"initialMargin": 0,
+	"instantMaxVolume": 0,
+	"leverage": 1.5,
+	"longOnly": false,
+	"lotMax": 10.0,
+	"lotMin": 0.1,
+	"lotStep": 0.1,
+	"low": 3500.0,
+	"marginHedged": 0,
+	"marginHedgedStrong": false,
+	"marginMaintenance": null,
+	"marginMode": 101,
+	"percentage": 100.0,
+	"precision": 2,
+	"profitMode": 5,
+	"quoteId": 1,
+	"shortSelling": true,
+	"spreadRaw": 0.000003,
+	"spreadTable": 0.00042,
+	"starting": null,
+	"stepRuleId": 1,
+	"stopsLevel": 0,
+	"swap_rollover3days": 0,
+	"swapEnable": true,
+	"swapLong": -2.55929,
+	"swapShort": 0.131,
+	"swapType": 0,
+	"symbol": "USDPLN",
+	"tickSize": 1.0,
+	"tickValue": 1.0,
+	"time": 1272446136891,
+	"timeString": "Thu May 23 12:23:44 EDT 2013",
+	"trailingEnabled": true,
+	"type": 21
+}]"""
+                    val getAllSymbolsResponseJson = JSONArray(getAllSymbolsResponse)
+                    responses.put(wrapResponse(command, getAllSymbolsResponseJson))
+                }
+                "getProfitCalculation" -> {
+                    val getProfitCalculationResponse = """{
+	"order": 7497776,
+	"order2": 7497777,
+	"position": 7497776,
+	"profit": 7076.52
+}"""
+                    val getProfitCalculationResponseJson = JSONObject(getProfitCalculationResponse)
+                    responses.put(wrapResponse(command, getProfitCalculationResponseJson))
+                }
+                "ping" -> {
+                    val pingResponse = """{
+	"status": true	
+}"""
+                    val pingResponseJson = JSONObject(pingResponse)
+                    responses.put(pingResponseJson)
+                }
+                else -> throw IllegalStateException("Unexpected value: $command")
             }
-        } catch (JSONException | InterruptedException e) {
-            e.printStackTrace();
+        } catch (e: JSONException) {
+            e.printStackTrace()
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
         }
     }
-    private JSONObject wrapResponse(String commandName, JSONObject data) throws JSONException {
-        JSONObject response = new JSONObject();
-        response.put("command", commandName);
-        response.put("returnData", data);
-        return response;
+
+    @Throws(JSONException::class)
+    private fun wrapResponse(commandName: String, data: JSONObject): JSONObject {
+        val response = JSONObject()
+        response.put("command", commandName)
+        response.put("returnData", data)
+        return response
     }
 
-    private JSONObject wrapResponse(String commandName, JSONArray data) throws JSONException {
-        JSONObject response = new JSONObject();
-        response.put("command", commandName);
-        response.put("returnData", data);
-        return response;
+    @Throws(JSONException::class)
+    private fun wrapResponse(commandName: String, data: JSONArray): JSONObject {
+        val response = JSONObject()
+        response.put("command", commandName)
+        response.put("returnData", data)
+        return response
     }
 
-    @Override
-    public JSONObject getNextMessage() {
-        try {
-            return responses.take();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    @get:Throws(JSONException::class, IOException::class)
+    override val nextMessage: JSONObject?
+        get() {
+            try {
+                return responses.take()
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            }
+            return JSONObject()
         }
-        return new JSONObject();
-    }
 
-    @Override
-    public boolean isConnected() {
-        return isConnected;
-    }
 
-    @Override
-    public void disconnect() {
-        isConnected = false;
-    }
+    override var isConnected = true
 
-    /*public void setWebSocketMockSettings(XtbWebSocketMockSettings webSocketMockSettings) {
+    override fun disconnect() {
+        isConnected = false
+    } /*public void setWebSocketMockSettings(XtbWebSocketMockSettings webSocketMockSettings) {
         this.webSocketMockSettings = webSocketMockSettings;
     }*/
 }
-
