@@ -1,5 +1,8 @@
 package com.example.myapplication.xstore2
 
+//import com.example.myapplication.xstore2.model.Movie
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.*
@@ -10,6 +13,12 @@ import javax.net.ssl.SSLSocketFactory
 internal open class WebSocket {
     private var webSocketEndpoint: String? = null
     private var webSocketPort = 0
+
+    init {
+        //val moshi: Moshi = Moshi.Builder().build()
+        //val adapter: JsonAdapter<Movie> = moshi.adapter(Movie::class.java)
+        //val movie = adapter.fromJson(moviesJson))
+    }
 
     constructor(webSocketEndpoint: String?, webSocketPort: Int) {
         this.webSocketEndpoint = webSocketEndpoint
@@ -55,18 +64,18 @@ internal open class WebSocket {
         socketWriter!!.print(message)
     }
 
-    @get:Throws(JSONException::class, IOException::class)
-    open val nextMessage: JSONObject?
-        get() {
-            var line: String
-            val response = StringBuilder()
+    @Throws(JSONException::class, IOException::class)
+    open fun getNextMessage(): String? {
+        var line: String
+        val response = StringBuilder()
+        line = socketReader.readLine()
+        do {
+            response.append(line)
             line = socketReader.readLine()
-            do {
-                response.append(line)
-                line = socketReader.readLine()
-            } while (line != "")
-            return JSONObject(response.toString())
-        }
+        } while (line != "")
+
+        return response.toString()
+    }
     open val isConnected
         get() = !socketClient!!.isClosed
 

@@ -1,11 +1,13 @@
 package com.example.myapplication.xstore2
 
+import com.example.myapplication.xstore2.mocks.XtbMockClientAsync
 import junit.framework.TestCase
 import org.json.JSONException
 import java.util.concurrent.*
 
 open class XtbClientMockAsyncTest : TestCase() {
     private var xtbService: XtbClientAsync? = null
+
     @Throws(Exception::class)
     public override fun setUp() {
         super.setUp()
@@ -25,10 +27,10 @@ open class XtbClientMockAsyncTest : TestCase() {
         TimeoutException::class
     )
     fun testGetAllSymbolsAsync() {
-        val response = xtbService!!.allSymbolsAsync[10, TimeUnit.SECONDS]
+        val response = xtbService!!.getAllSymbolsAsync()[10, TimeUnit.SECONDS]
         val testedValue = response.getJSONArray("returnData")
         val testedValue2 = testedValue.length()
-        assert(testedValue2 == 1)
+        assertEquals(3, testedValue2)
     }
 
     @Throws(
@@ -52,7 +54,7 @@ open class XtbClientMockAsyncTest : TestCase() {
         TimeoutException::class
     )
     fun testGetPingAsync() {
-        val status = xtbService!!.pingAsync[10, TimeUnit.SECONDS].getBoolean("status")
+        val status = xtbService!!.getPingAsync()[10, TimeUnit.SECONDS].getBoolean("status")
         assertTrue(status)
     }
 
@@ -73,18 +75,28 @@ open class XtbClientMockAsyncTest : TestCase() {
         )[10, TimeUnit.SECONDS]
         val result = response.getJSONObject("returnData")
         val profit = result.getDouble("profit")
-        assertEquals(7076.52, profit)
+        assertEquals(-200000.0, profit)
     }
 
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     fun testSubscribeGetTicketPriceStarted() {
+        (xtbService as XtbMockClientAsync).generateDefaultSymbolBehaviour(
+            "PLNUSD",
+            cycleTimeInSeconds = 10,
+            numberOfUpdatesInOneCycle = 100
+        )
         val isStarted = xtbService!!.subscribeGetTicketPrice("PLNUSD")[10, TimeUnit.SECONDS]
         assertTrue(isStarted)
     }
 
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     fun testSubscribeGetTicketPriceReturnedTwoResponses() {
-        xtbService!!.subscribeGetTicketPrice("USDPLN")[10, TimeUnit.SECONDS]
+        (xtbService as XtbMockClientAsync).generateDefaultSymbolBehaviour(
+            "PLNUSD",
+            cycleTimeInSeconds = 10,
+            numberOfUpdatesInOneCycle = 100
+        )
+        xtbService!!.subscribeGetTicketPrice("PLNUSD")[10, TimeUnit.SECONDS]
         val queue = xtbService!!.subscriptionResponsesQueue
         val executor = Executors.newSingleThreadExecutor()
         val completableFuture = CompletableFuture<Boolean>()
@@ -93,7 +105,7 @@ open class XtbClientMockAsyncTest : TestCase() {
             while (i < 2) {
                 try {
                     val response = queue.take()
-                    if (response.getString("command") != "getTickPrices") {
+                    if (response.getJSONObject("returnData").getString("symbol") != "PLNUSD") {
                         throw Exception(
                             """
     Response seems not be OK. Expected command = getTickPrices in response, but could not find it.
@@ -108,7 +120,7 @@ open class XtbClientMockAsyncTest : TestCase() {
             }
             completableFuture.complete(true)
         }
-        val isThreadReturningResponses = completableFuture[10, TimeUnit.SECONDS]
+        val isThreadReturningResponses = completableFuture[1088, TimeUnit.SECONDS]
         assertTrue(isThreadReturningResponses)
     }
 }
