@@ -2,11 +2,25 @@ package com.example.myapplication.xstore2.mocks
 
 import com.example.myapplication.xstore2.XtbClient
 import com.example.myapplication.xstore2.XtbClientAsync
-import org.json.JSONException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
-internal class XtbMockClientAsync : XtbClientAsync(XtbMockClient()) {
+internal class XtbMockClientAsync : XtbClientAsync("Mock login", "Mock password") {
+
+    override fun connectAsync(): Future<Boolean> {
+        xtbClient = XtbMockClient()
+        val completableFuture = CompletableFuture<Boolean>()
+        //MyInterface myInterface = xtbService::connect;
+        executor.submit {
+            try {
+                completableFuture.complete(xtbClient.connect())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                completableFuture.complete(false)
+            }
+        }
+        return completableFuture
+    }
 
     fun generateDefaultSymbolBehaviour(symbol: String = "EURPLN", cycleTimeInSeconds: Int = 10, numberOfUpdatesInOneCycle: Int = 100) {
         val startTick = TickPrice(10.1, 100, 9.9, 100)
@@ -62,11 +76,6 @@ internal class XtbMockClientAsync : XtbClientAsync(XtbMockClient()) {
 }
 
 internal class XtbMockClient : XtbClient("Mock login", "Mock password") {
-    private val webSocketMock: XtbWebSocketMock
-        get() {
-            return webSocket as XtbWebSocketMock
-        }
-
     private val streamingWebSocketMock: XtbWebSocketMock
         get() {
             return streamingWebSocket as XtbWebSocketMock
@@ -79,8 +88,10 @@ internal class XtbMockClient : XtbClient("Mock login", "Mock password") {
         webSocket = XtbWebSocketMock()
         streamingWebSocket = XtbWebSocketMock()
 
-        // Login should be moved from this place somewhere else...
+        // TODO Login should be moved from this place somewhere else...
         login()
+        // TODO Check _stopListening, rewrite this a little bit
+        stopListening = false
         return true
     }
 

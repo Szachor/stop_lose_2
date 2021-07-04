@@ -1,11 +1,15 @@
 package com.example.myapplication.xstore2.model
 
 import com.squareup.moshi.JsonClass
+import java.util.*
 
 @JsonClass(generateAdapter = true)
-class GetTickPricesResponse constructor(status: Boolean, returnData: GetTickPricesReturnData) : BaseResponse<GetTickPricesReturnData>(
+class GetTickPricesResponse constructor(status: Boolean, returnData: Quotations?) : BaseResponse<Quotations>(
     status, returnData
 )
+
+@JsonClass(generateAdapter = true)
+data class Quotations(val quotations: List<GetTickPricesReturnData>)
 
 @JsonClass(generateAdapter = true)
 data class GetTickPricesReturnData(
@@ -16,7 +20,7 @@ data class GetTickPricesReturnData(
     val high: Double,
     val level: Int,
     val low: Double,
-    val quoteId: Int,
+    val quoteId: Int?,
     val spreadRaw: Double,
     val spreadTable: Double,
     val symbol: String,

@@ -83,19 +83,6 @@ open class MoshiJsonTests : TestCase() {
     private var getAllSymbolsResponseStringTestCase =
         """{"status":true,"returnData":[{"symbol":"CLX.US_4","currency":"USD","categoryName":"STC","currencyProfit":"USD","quoteId":6,"quoteIdCross":4,"marginMode":103,"profitMode":6,"pipsPrecision":2,"contractSize":1,"exemode":1,"time":1624046393575,"expiration":null,"stopsLevel":0,"precision":2,"swapType":2,"stepRuleId":12,"type":13,"instantMaxVolume":2147483647,"groupName":"US","description":"Clorox Co CFD","longOnly":false,"trailingEnabled":false,"marginHedgedStrong":false,"swapEnable":true,"percentage":100.0,"bid":174.23,"ask":174.35,"high":174.94,"low":173.00,"lotMin":1.00,"lotMax":1000000.00,"lotStep":1.00,"tickSize":0.01,"tickValue":0.01,"swapLong":-0.00717,"swapShort":-0.00672,"leverage":20.00,"spreadRaw":0.12,"spreadTable":12.0,"starting":null,"swap_rollover3days":0,"marginMaintenance":0,"marginHedged":0,"initialMargin":0,"currencyPair":false,"shortSelling":true,"timeString":"Fri Jun 18 21:59:53 CEST 2021"},{"symbol":"IDNA.UK_5","currency":"USD","categoryName":"ETF","currencyProfit":"USD","quoteId":6,"quoteIdCross":4,"marginMode":103,"profitMode":6,"pipsPrecision":4,"contractSize":1,"exemode":1,"time":1624031098585,"expiration":null,"stopsLevel":0,"precision":4,"swapType":2,"stepRuleId":272,"type":60,"instantMaxVolume":2147483647,"groupName":"ETF","description":"iShares MSCI North America UCITS ETF (Dist, USD) CFD","longOnly":true,"trailingEnabled":false,"marginHedgedStrong":false,"swapEnable":true,"percentage":100.0,"bid":79.1200,"ask":79.2300,"high":80.1300,"low":79.0400,"lotMin":1.00,"lotMax":1000000.00,"lotStep":1.00,"tickSize":0.0001,"tickValue":0.0001,"swapLong":-0.0071,"swapShort":-0.00679,"leverage":20.00,"spreadRaw":0.1100,"spreadTable":1100.0,"starting":null,"swap_rollover3days":0,"marginMaintenance":0,"marginHedged":0,"initialMargin":0,"currencyPair":false,"shortSelling":false,"timeString":"Fri Jun 18 17:44:58 CEST 2021"}]}"""
 
-    fun testGetTickPricesResponse() {
-        val moshi: Moshi = Moshi.Builder().build()
-        val adapter: JsonAdapter<GetTickPricesResponse> =
-            moshi.adapter(GetTickPricesResponse::class.java)
-
-        val getTickPricesResponse = adapter.fromJson(getTickPricesResponseStringTestCase)
-        val tickPricesResponseJsonResult = adapter.toJson(getTickPricesResponse)
-
-        assertEquals(
-            removeUnlikedCharactersFromString(getTickPricesResponseStringTestCase),
-            tickPricesResponseJsonResult
-        )
-    }
 
     fun testGetSymbolResponse() {
         val moshi: Moshi = Moshi.Builder().build()
@@ -112,11 +99,31 @@ open class MoshiJsonTests : TestCase() {
         val adapter: JsonAdapter<GetAllSymbolsResponse> =
             moshi.adapter(GetAllSymbolsResponse::class.java)
 
-        val getAllSymbolsResponseParsedJsonToClass = adapter.fromJson(getAllSymbolsResponseStringTestCase)
+        val getAllSymbolsResponseParsedJsonToClass =
+            adapter.fromJson(getAllSymbolsResponseStringTestCase)
 
         assertEquals("CLX.US_4", getAllSymbolsResponseParsedJsonToClass?.returnData!![0].symbol)
     }
 
+    fun testSeveralMoshiAdapters_GetAllSymbolsResponse_GetSymbolResponse() {
+        val moshi: Moshi = Moshi.Builder().build()
+
+        // Adapters initialization
+        val getSymbolResponseAdapter: JsonAdapter<GetSymbolResponse> =
+            moshi.adapter(GetSymbolResponse::class.java)
+        val getAllSymbolsResponseAdapter: JsonAdapter<GetAllSymbolsResponse> =
+            moshi.adapter(GetAllSymbolsResponse::class.java)
+
+        // Jsons to Objects
+        val getSymbolResponseParsedJsonToClass =
+            getSymbolResponseAdapter.fromJson(getSymbolResponseStringTestCase)
+        val getAllSymbolsResponseParsedJsonToClass =
+            getAllSymbolsResponseAdapter.fromJson(getAllSymbolsResponseStringTestCase)
+
+        // Checking
+        assertEquals("USDPLN", getSymbolResponseParsedJsonToClass?.returnData?.symbol)
+        assertEquals("CLX.US_4", getAllSymbolsResponseParsedJsonToClass?.returnData!![0].symbol)
+    }
 
 
     // Removes spaces and \n from string

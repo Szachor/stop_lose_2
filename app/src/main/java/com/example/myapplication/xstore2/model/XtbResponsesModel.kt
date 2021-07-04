@@ -6,8 +6,9 @@ import com.squareup.moshi.JsonClass
 
 open class BaseResponse<V>(
     val status: Boolean,
-    val returnData: V,
-    val customTag: String? = null
+    val returnData: V? = null,
+    val customTag: String? = null,
+    val errorCode: String? = null
 )
 
 

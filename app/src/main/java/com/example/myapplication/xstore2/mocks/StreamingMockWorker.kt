@@ -1,6 +1,5 @@
 package com.example.myapplication.xstore2.mocks
 
-import android.os.SystemClock
 import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 
@@ -10,8 +9,6 @@ internal class StreamingMockWorker(
     val symbol: String,
     private val responses: LinkedBlockingQueue<String>,
 ) : Thread() {
-    init {
-    }
 
     override fun run() {
         val startTickPrice = getStartTickPrice()
@@ -31,7 +28,8 @@ internal class StreamingMockWorker(
             val timeOfOneStep = 1.0 * cycleTimeInSeconds / numberOfSteps
 
             while (currentStep++ < numberOfSteps) {
-                SystemClock.sleep(timeOfOneStep.toLong())
+                sleep(timeOfOneStep.toLong() * 1000)
+                //SystemClock.sleep(timeOfOneStep.toLong())
                 val currentTickPrice =
                     getNextTickPrice(previousTickPrice, nextTickPrice, currentStep, numberOfSteps)
                 sendMessage(symbol, currentTickPrice)

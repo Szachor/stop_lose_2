@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
-import androidx.preference.PreferenceManager
 import com.example.myapplication.databinding.ActivityMainBinding
 import com.example.myapplication.xstore2.XtbClientAsync
 import com.example.myapplication.xstore2.XtbService

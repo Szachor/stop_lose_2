@@ -1,24 +1,15 @@
 package com.example.myapplication.xstore2
 
 //import com.example.myapplication.xstore2.model.Movie
-import com.squareup.moshi.JsonAdapter
-import com.squareup.moshi.Moshi
-import org.json.JSONException
-import org.json.JSONObject
 import java.io.*
 import java.net.InetSocketAddress
 import java.net.Socket
 import javax.net.ssl.SSLSocketFactory
 
+
 internal open class WebSocket {
     private var webSocketEndpoint: String? = null
     private var webSocketPort = 0
-
-    init {
-        //val moshi: Moshi = Moshi.Builder().build()
-        //val adapter: JsonAdapter<Movie> = moshi.adapter(Movie::class.java)
-        //val movie = adapter.fromJson(moviesJson))
-    }
 
     constructor(webSocketEndpoint: String?, webSocketPort: Int) {
         this.webSocketEndpoint = webSocketEndpoint
@@ -38,11 +29,7 @@ internal open class WebSocket {
         } catch (exception: IOException) {
             exception.printStackTrace()
         }
-        try {
-            socketWriter = PrintStream(socketClient!!.getOutputStream())
-        } catch (exception: IOException) {
-            exception.printStackTrace()
-        }
+        socketWriter = PrintStream(socketClient!!.getOutputStream())
     }
 
     private var _socketReader: BufferedReader? = null
@@ -64,18 +51,22 @@ internal open class WebSocket {
         socketWriter!!.print(message)
     }
 
-    @Throws(JSONException::class, IOException::class)
+    @Throws(IOException::class)
     open fun getNextMessage(): String? {
-        var line: String
         val response = StringBuilder()
-        line = socketReader.readLine()
-        do {
-            response.append(line)
-            line = socketReader.readLine()
-        } while (line != "")
 
+        do {
+            // Sometimes server close the connection. socketClient!!.isOutputShutdown checks if the output is closed
+            // Without calling isOutputShutdown the "socketReader.readLine()" method blocks thread (without possibility to close)
+            // With isOutputShutdown the "socketReader.readLine()" method returns null if socket is closed
+            // In both cases isOutputShutdown returns false
+            var x1 = socketClient!!.isOutputShutdown
+            val line = socketReader.readLine() ?: throw IOException("OutputShutdown Exception - probably webSocket closed by server")
+            response.append(line)
+        } while (line == "")
         return response.toString()
     }
+
     open val isConnected
         get() = !socketClient!!.isClosed
 

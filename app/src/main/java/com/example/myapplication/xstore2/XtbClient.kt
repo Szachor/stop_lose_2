@@ -1,38 +1,70 @@
 package com.example.myapplication.xstore2
 
+import com.example.myapplication.xstore2.model.*
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.LinkedBlockingQueue
 
+
+// TODO Create class for different services: Prod, Test, Mock
+
+
+// TODO Apply requirements about request limits:
+// Request should be sent in 200ms internals. This rule can be broken 5 times in row.
 open class XtbClient(private val login: String?, private val password: String?) {
-    private var _stopListening = false
+    protected var stopListening = false
 
     // This WebSocket for main connection
     // It is used for the Request-Reply commands.
     internal var webSocket: WebSocket? = null
+
+    // This WebSocket is used for streaming methods
     internal var streamingWebSocket: WebSocket? = null
+
     val subscriptionResponses = LinkedBlockingQueue<JSONObject>()
+
     val isConnected: Boolean
         get() = if (webSocket == null) {
             false
         } else webSocket!!.isConnected
+
+
+
+    private var getSymbolResponseAdapter: JsonAdapter<GetSymbolResponse>
+    private var getTickPricesResponseAdapter: JsonAdapter<GetTickPricesResponse>
+    private var getAllSymbolsResponseAdapter: JsonAdapter<GetAllSymbolsResponse>
+
+    init {
+        val moshi: Moshi = Moshi.Builder().build()
+        getSymbolResponseAdapter = moshi.adapter(GetSymbolResponse::class.java)
+        getAllSymbolsResponseAdapter = moshi.adapter(GetAllSymbolsResponse::class.java)
+        getTickPricesResponseAdapter = moshi.adapter(GetTickPricesResponse::class.java)
+
+    }
 
     @Throws(JSONException::class)
     open fun connect(): Boolean {
         if (isConnected) {
             return true
         }
-        webSocket = XtbWebSocket(false)
-        streamingWebSocket = XtbWebSocket(true)
-
-        login()
-        _stopListening = false
+        try {
+            webSocket = XtbWebSocket(false)
+            streamingWebSocket = XtbWebSocket(true)
+            login()
+            stopListening = false
+        }
+        catch (exception: IOException){
+            exception.printStackTrace()
+            return false
+        }
         return true
     }
 
     fun disconnect(): Boolean {
-        _stopListening = true
+        stopListening = true
         try {
             webSocket!!.disconnect()
         } catch (exception: IOException) {
@@ -48,44 +80,39 @@ open class XtbClient(private val login: String?, private val password: String?) 
 
     @Throws(JSONException::class)
     protected fun login() {
-        val response = processMessage(XtbServiceBodyMessageBuilder.getLoginMessage(login, password))
-        streamSessionId = response.getString("streamSessionId")
+        val response = processMessage(XtbServiceBodyMessageBuilder.getLoginMessage(login!!,
+            password!!
+        ))
+        streamSessionId = JSONObject(response).getString("streamSessionId")
     }
 
     @Throws(JSONException::class)
-    private fun processMessage(message: String): JSONObject {
+    private fun processMessage(message: String): String {
         webSocket!!.sendMessage(message)
         return getResponse(webSocket!!)
     }
 
-    @Throws(JSONException::class)
-    private fun getResponse(webSocket: WebSocket): JSONObject {
-        var response: JSONObject
+    private fun getResponse(webSocket: WebSocket): String {
+        val response: String
         try {
-            val responseString = webSocket.getNextMessage()!!
-            response = JSONObject(responseString)
-        } catch (exception: JSONException) {
-            response = JSONObject()
-            response.put("Error", "Couldn't parse response to the JSON format")
-            response.put("Response", response)
-            exception.printStackTrace()
+            response = webSocket.getNextMessage()!!
         } catch (exception: IOException) {
             // Disconnected webSocket when thread was waiting for message
-            if (!_stopListening) {
+            if (!stopListening) {
                 exception.printStackTrace()
             }
-            response = JSONObject()
-            response.put("Error", "Lost connection")
+            return "Error: Lost connection"
         }
-        return JSONObject(response.toString())
+        return response
     }
 
     fun runSubscriptionStreamingReader() {
         val runnable = Runnable {
-            while (!_stopListening && isConnected) {
+            while (!stopListening && isConnected) {
                 var response: JSONObject
                 try {
-                    response = getResponse(streamingWebSocket!!)
+                    val responseString = getResponse(streamingWebSocket!!)
+                    response = JSONObject(responseString)
                     if (!response.has("Error")) {
                         subscriptionResponses.put(JSONObject(response.toString()))
                     }
@@ -101,11 +128,16 @@ open class XtbClient(private val login: String?, private val password: String?) 
     }
 
     @Throws(JSONException::class)
-    fun getAllSymbols(): JSONObject =
-        processMessage(XtbServiceBodyMessageBuilder.getAllSymbolsMessage())
+    fun getAllSymbols(): List<GetSymbolResponseReturnData> {
+        val jsonMessage = processMessage(XtbServiceBodyMessageBuilder.getAllSymbolsMessage())
+        return getAllSymbolsResponseAdapter.fromJson(jsonMessage)?.returnData!!
+    }
 
     @Throws(JSONException::class)
-    fun getPing(): JSONObject = processMessage(XtbServiceBodyMessageBuilder.getPingJsonMessage())
+    fun getPing(): JSONObject {
+        val responseString = processMessage(XtbServiceBodyMessageBuilder.getPingJsonMessage())
+        return JSONObject(responseString)
+    }
 
     @Throws(JSONException::class)
     fun getProfitCalculation(
@@ -115,7 +147,7 @@ open class XtbClient(private val login: String?, private val password: String?) 
         symbol: String?,
         volume: Float
     ): JSONObject {
-        return processMessage(
+        val responseString = processMessage(
             XtbServiceBodyMessageBuilder.getProfitCalculationMessage(
                 closePrice,
                 cmd,
@@ -124,18 +156,22 @@ open class XtbClient(private val login: String?, private val password: String?) 
                 volume
             )
         )
+        return JSONObject(responseString)
     }
 
     @Throws(JSONException::class)
-    fun getSymbol(symbol: String?): JSONObject {
-        return processMessage(XtbServiceBodyMessageBuilder.getSymbolMessage(symbol))
+    fun getSymbol(symbol: String): GetSymbolResponseReturnData {
+        val responseString = processMessage(XtbServiceBodyMessageBuilder.getSymbolMessage(symbol))
+        val responseObject = getSymbolResponseAdapter.fromJson(responseString)
+        if(responseObject!!.errorCode == "BE115") throw NotFoundSymbol()
+        return responseObject.returnData!!
     }
 
     fun subscribeGetKeepAlive() {
         val streamingWebSocket = streamingWebSocket
         streamingWebSocket!!.sendMessage(
             XtbServiceBodyMessageBuilder.getKeepAliveMessage(
-                streamSessionId
+                streamSessionId!!
             )
         )
     }
@@ -149,8 +185,10 @@ open class XtbClient(private val login: String?, private val password: String?) 
         )
     }
 
-    fun getTickPrices(symbol: String): JSONObject {
-        return processMessage(XtbServiceBodyMessageBuilder.getTickPriceMessage(symbol))
+    fun getTickPrices(symbol: String): List<GetTickPricesReturnData> {
+        val responseString =
+            processMessage(XtbServiceBodyMessageBuilder.getTickPriceMessage(symbol))
+        return getTickPricesResponseAdapter.fromJson(responseString)!!.returnData?.quotations!!
     }
 
     companion object {
@@ -198,3 +236,4 @@ internal object XtbServiceBodyMessageBuilder {
         return """{"command": "getProfitCalculation","arguments": {"closePrice": $closePrice,"cmd": $cmd,"openPrice": $openPrice,"symbol": "$symbol","volume": $volume}}"""
     }
 }
+class NotFoundSymbol: Exception()

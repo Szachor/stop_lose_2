@@ -2,14 +2,18 @@ package com.example.myapplication.xstore2
 
 import junit.framework.TestCase
 import org.json.JSONException
+import org.junit.Assert.assertThrows
+import org.junit.internal.Throwables
 import java.util.concurrent.*
 
 open class XtbClientAsyncTest : TestCase() {
     private var xtbService: XtbClientAsync? = null
+
     @Throws(Exception::class)
     public override fun setUp() {
         super.setUp()
-        xtbService = XtbClientAsync("12263751", "xoh26561")
+        //TODO Login and Password should be moved to another space
+        xtbService = XtbClientAsync("12366113", "xoh17653")
         xtbService!!.connectAsync().get()
     }
 
@@ -20,27 +24,35 @@ open class XtbClientAsyncTest : TestCase() {
 
     @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
     fun testGetAllSymbolsAsync() {
-        val response = xtbService!!.getAllSymbolsAsync()[10, TimeUnit.SECONDS]
-        val testedValue = response.getJSONArray("returnData")
-        val testedValue2 = testedValue.length()
-        assert(testedValue2 > 10)
+        val response = xtbService!!.getAllSymbolsAsync()[20, TimeUnit.SECONDS]
+
+        val testedValue = response.size
+
+        assert(testedValue > 10)
     }
 
     @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
     fun testGetSymbolAsync() {
         val symbol = "USDPLN"
-        val response = xtbService!!.getSymbolAsync("USDPLN").get().getJSONObject("returnData")
-        val returnedSymbol = response["symbol"].toString()
+
+        val response = xtbService!!.getSymbolAsync("USDPLN")[3, TimeUnit.SECONDS]
+        val returnedSymbol = response.symbol
+
         assertEquals(returnedSymbol, symbol)
     }
 
     @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
     fun testGetSymbolAsyncNonExistingSymbol() {
-        val response = xtbService!!.getSymbolAsync("XXX").get()
-        val errorCode = response.getString("errorCode")
-        val status = response.getBoolean("status")
-        assertEquals("BE115", errorCode)
-        assertFalse(status)
+        assertThrows(NotFoundSymbol::class.java){
+            val result = xtbService!!.getSymbolAsync("XXX").exceptionally { e ->
+                throw e
+            }
+            try {
+                result[3, TimeUnit.SECONDS]
+            }catch (e : ExecutionException){
+                throw e.cause!!
+            }
+        }
     }
 
     @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
@@ -52,20 +64,36 @@ open class XtbClientAsyncTest : TestCase() {
     @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
     fun testGetProfitCalculationAsyncProfitBellowZero() {
         val requestedSymbol = "EURUSD"
+
         val response =
-            xtbService!!.getProfitCalculationAsync(1.2f, 1, 1.0f, requestedSymbol, 10.0f)[1, TimeUnit.SECONDS]
+            xtbService!!.getProfitCalculationAsync(
+                1.2f,
+                1,
+                1.0f,
+                requestedSymbol,
+                10.0f
+            )[1, TimeUnit.SECONDS]
         val result = response.getJSONObject("returnData")
         val profit = result.getDouble("profit")
+
         assertTrue(profit < 0)
     }
 
     @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
     fun testGetProfitCalculationAsyncProfitZero() {
         val requestedSymbol = "EURUSD"
+
         val response =
-            xtbService!!.getProfitCalculationAsync(1.0f, 1, 1.0f, requestedSymbol, 10.0f)[1, TimeUnit.SECONDS]
+            xtbService!!.getProfitCalculationAsync(
+                1.0f,
+                1,
+                1.0f,
+                requestedSymbol,
+                10.0f
+            )[1, TimeUnit.SECONDS]
         val result = response.getJSONObject("returnData")
         val profit = result.getDouble("profit")
+
         assertEquals(0.0, profit)
     }
 
@@ -75,27 +103,18 @@ open class XtbClientAsyncTest : TestCase() {
         assertTrue(isStarted)
     }
 
-    // This test need to be corrected
-    // For some reason this test locks :/ timeout is not working after calling get method
-    // it looks like waiting for response from socket is blocking test
-    // Using another thread with executor is workaround for this problem
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     fun testGetTickPriceResponse() {
         val requestedSymbol = "EURPLN"
-        val executor = Executors.newSingleThreadExecutor()
-        val completableFuture = CompletableFuture<Boolean>()
-        var getResponse = false
-        executor.submit {
-            val response =
-                xtbService!!.getTickPricesAsync(requestedSymbol)[3, TimeUnit.SECONDS]
-            getResponse = response.getBoolean("status")
-            completableFuture.complete(true)
-        }
-        completableFuture[11, TimeUnit.SECONDS]
-        assertTrue(getResponse)
+
+        val response =
+            xtbService!!.getTickPricesAsync(requestedSymbol)[3, TimeUnit.SECONDS]
+        val receivedSymbol: String = response[0].symbol
+
+        assertTrue(receivedSymbol == requestedSymbol)
     }
 
-    // This test need to be corrected
+    // TODO this test should be rewritten
     @Throws(ExecutionException::class, InterruptedException::class)
     fun testSubscribeGetTicketPriceReturnedResponse() {
         val requestedSymbol = "EURPLN"
@@ -129,10 +148,36 @@ open class XtbClientAsyncTest : TestCase() {
 
     @Throws(ExecutionException::class, InterruptedException::class)
     fun testSubscribeGetKeepAliveStarted() {
-        val isStarted = xtbService!!.subscribeGetKeepAlive().get()
+        val isStarted = xtbService!!.subscribeGetKeepAlive()[20, TimeUnit.SECONDS]
         assertTrue(isStarted)
     }
 
+    // TODO this test should be rewritten
+    fun testGetAllSymbolsAndSubscribe10FirstAndWaitFor10Responses() {
+        val allSymbols = xtbService!!.getAllSymbolsAsync().get()
+
+        var i = 0
+        while (i < 25) {
+            val symbol = allSymbols!![i++].symbol
+            xtbService!!.subscribeGetTicketPrice(symbol)
+        }
+
+        val queue = xtbService!!.subscriptionResponsesQueue
+
+        val executor = Executors.newSingleThreadExecutor()
+        val completableFuture = CompletableFuture<Boolean>()
+        executor.submit {
+            var j = 0
+            while (j++ < 10) {
+                queue.take()
+            }
+            completableFuture.complete(true)
+        }
+        val isThreadReturningResponses = completableFuture[50, TimeUnit.SECONDS]
+        assertTrue(isThreadReturningResponses)
+    }
+
+    // TODO this test should be rewritten
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     fun testSubscribeGetKeepAliveReturnedTwoResponses() {
         xtbService!!.subscribeGetKeepAlive().get()

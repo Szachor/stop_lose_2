@@ -28,9 +28,8 @@ open class XtbClientMockAsyncTest : TestCase() {
     )
     fun testGetAllSymbolsAsync() {
         val response = xtbService!!.getAllSymbolsAsync()[10, TimeUnit.SECONDS]
-        val testedValue = response.getJSONArray("returnData")
-        val testedValue2 = testedValue.length()
-        assertEquals(3, testedValue2)
+        val numberOfReturnedSymbols = response.size
+        assertEquals(3, numberOfReturnedSymbols)
     }
 
     @Throws(
@@ -42,8 +41,8 @@ open class XtbClientMockAsyncTest : TestCase() {
     fun testGetSymbolAsync() {
         val symbol = "USDPLN"
         val response =
-            xtbService!!.getSymbolAsync("USDPLN")[10, TimeUnit.SECONDS].getJSONObject("returnData")
-        val returnedSymbol = response["symbol"].toString()
+            xtbService!!.getSymbolAsync("USDPLN")[10, TimeUnit.SECONDS]
+        val returnedSymbol = response.symbol
         assertEquals(returnedSymbol, symbol)
     }
 
@@ -94,7 +93,7 @@ open class XtbClientMockAsyncTest : TestCase() {
         (xtbService as XtbMockClientAsync).generateDefaultSymbolBehaviour(
             "PLNUSD",
             cycleTimeInSeconds = 10,
-            numberOfUpdatesInOneCycle = 100
+            numberOfUpdatesInOneCycle = 3
         )
         xtbService!!.subscribeGetTicketPrice("PLNUSD")[10, TimeUnit.SECONDS]
         val queue = xtbService!!.subscriptionResponsesQueue
@@ -102,7 +101,7 @@ open class XtbClientMockAsyncTest : TestCase() {
         val completableFuture = CompletableFuture<Boolean>()
         executor.submit {
             var i = 0
-            while (i < 2) {
+            while (i < 4) {
                 try {
                     val response = queue.take()
                     if (response.getJSONObject("returnData").getString("symbol") != "PLNUSD") {

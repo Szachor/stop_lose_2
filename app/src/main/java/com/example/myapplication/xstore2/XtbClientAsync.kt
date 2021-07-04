@@ -1,11 +1,9 @@
 package com.example.myapplication.xstore2
 
-import org.json.JSONException
+import com.example.myapplication.xstore2.model.GetSymbolResponseReturnData
+import com.example.myapplication.xstore2.model.GetTickPricesReturnData
 import org.json.JSONObject
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
-import java.util.concurrent.Future
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.*
 
 /*
  *
@@ -19,19 +17,17 @@ import java.util.concurrent.LinkedBlockingQueue
 /*interface MyInterface {
     Boolean doSomething() throws JSONException, IOException;
 }*/
-open class XtbClientAsync {
-    internal val xtbClient: XtbClient
-    internal val executor = Executors.newSingleThreadExecutor()
 
-    constructor(login: String, password: String) {
+// TODO create annotation that user need to be logged/connected to run this method
+// #TODO Base on the customTag value from XTB response the response should be properly returned/mapped
+open class XtbClientAsync (internal val login: String,internal val password: String){
+    internal lateinit var xtbClient: XtbClient
+    internal val executor: ExecutorService = Executors.newSingleThreadExecutor()
+
+
+
+    open fun connectAsync(): Future<Boolean> {
         xtbClient = XtbClient(login, password)
-    }
-
-    protected constructor(xtbClient: XtbClient) {
-        this.xtbClient = xtbClient
-    }
-
-    fun connectAsync(): Future<Boolean> {
         val completableFuture = CompletableFuture<Boolean>()
         //MyInterface myInterface = xtbService::connect;
         executor.submit {
@@ -66,8 +62,8 @@ open class XtbClientAsync {
         return completableFuture;
     }*/
 
-    fun getAllSymbolsAsync(): Future<JSONObject> {
-        val completableFuture = CompletableFuture<JSONObject>()
+    fun getAllSymbolsAsync(): Future<List<GetSymbolResponseReturnData>> {
+        val completableFuture = CompletableFuture<List<GetSymbolResponseReturnData>>()
         executor.submit {
             try {
                 completableFuture.complete(xtbClient.getAllSymbols())
@@ -78,11 +74,13 @@ open class XtbClientAsync {
         return completableFuture
     }
 
-    fun getSymbolAsync(symbol: String): Future<JSONObject> {
-        val completableFuture = CompletableFuture<JSONObject>()
+    fun getSymbolAsync(symbol: String): CompletableFuture<GetSymbolResponseReturnData> {
+        val completableFuture = CompletableFuture<GetSymbolResponseReturnData>()
         executor.submit {
             try {
                 completableFuture.complete(xtbClient.getSymbol(symbol))
+            } catch(e: NotFoundSymbol){
+                completableFuture.completeExceptionally(e)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -90,8 +88,8 @@ open class XtbClientAsync {
         return completableFuture
     }
 
-    fun getTickPricesAsync(symbol: String): Future<JSONObject> {
-        val completableFuture = CompletableFuture<JSONObject>()
+    fun getTickPricesAsync(symbol: String): Future<List<GetTickPricesReturnData>> {
+        val completableFuture = CompletableFuture<List<GetTickPricesReturnData>>()
         executor.submit {
             try {
                 completableFuture.complete(xtbClient.getTickPrices(symbol))
@@ -102,6 +100,7 @@ open class XtbClientAsync {
         return completableFuture
     }
 
+    // #TODO Change JSONObject to structured response
     fun getPingAsync(): Future<JSONObject> {
         val completableFuture = CompletableFuture<JSONObject>()
         executor.submit {
@@ -114,6 +113,7 @@ open class XtbClientAsync {
         return completableFuture
     }
 
+    // #TODO Change JSONObject to structured response
     fun getProfitCalculationAsync(
         closePrice: Float,
         cmd: Int,
