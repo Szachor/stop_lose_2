@@ -11,8 +11,7 @@ class WebSocketWithXtbConnectionTests : TestCase() {
     @Throws(Exception::class)
     public override fun setUp() {
         super.setUp()
-        webSocket = XtbWebSocket(false)
-
+        webSocket = XtbWebSocket.createWebSocket(connectionType = ConnectionType.TEST, false)
     }
 
     @Throws(ExecutionException::class, InterruptedException::class)

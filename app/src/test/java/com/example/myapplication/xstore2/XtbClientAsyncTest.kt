@@ -3,28 +3,34 @@ package com.example.myapplication.xstore2
 import junit.framework.TestCase
 import org.json.JSONException
 import org.junit.Assert.assertThrows
-import org.junit.internal.Throwables
 import java.util.concurrent.*
 
 open class XtbClientAsyncTest : TestCase() {
     private var xtbService: XtbClientAsync? = null
+    //TODO Login and Password should be moved to another space
+    private val login: String = "12366113"
+    private val password: String = "xoh17653"
+
+    private val shortTaskTimeout: Long = 3
+    private val mediumTaskTimeout: Long = 7
+    private val longTaskTimeout: Long = 20
+
 
     @Throws(Exception::class)
     public override fun setUp() {
         super.setUp()
-        //TODO Login and Password should be moved to another space
-        xtbService = XtbClientAsync("12366113", "xoh17653")
-        xtbService!!.connectAsync().get()
+        xtbService = XtbClientAsync()
+        xtbService!!.connectAsync(login, password, connectionType = ConnectionType.TEST)[5, TimeUnit.SECONDS]
     }
 
     @Throws(ExecutionException::class, InterruptedException::class)
     public override fun tearDown() {
-        xtbService!!.disconnectAsync().get()
+        xtbService!!.disconnectAsync()[shortTaskTimeout, TimeUnit.SECONDS]
     }
 
     @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
     fun testGetAllSymbolsAsync() {
-        val response = xtbService!!.getAllSymbolsAsync()[20, TimeUnit.SECONDS]
+        val response = xtbService!!.getAllSymbolsAsync()[longTaskTimeout, TimeUnit.SECONDS]
 
         val testedValue = response.size
 
@@ -35,7 +41,7 @@ open class XtbClientAsyncTest : TestCase() {
     fun testGetSymbolAsync() {
         val symbol = "USDPLN"
 
-        val response = xtbService!!.getSymbolAsync("USDPLN")[3, TimeUnit.SECONDS]
+        val response = xtbService!!.getSymbolAsync("USDPLN")[shortTaskTimeout, TimeUnit.SECONDS]
         val returnedSymbol = response.symbol
 
         assertEquals(returnedSymbol, symbol)
@@ -57,7 +63,7 @@ open class XtbClientAsyncTest : TestCase() {
 
     @Throws(ExecutionException::class, InterruptedException::class, JSONException::class)
     fun testGetPingAsync() {
-        val status = xtbService!!.getPingAsync().get().getBoolean("status")
+        val status = xtbService!!.getPingAsync()[shortTaskTimeout, TimeUnit.SECONDS].getBoolean("status")
         assertTrue(status)
     }
 
@@ -118,7 +124,7 @@ open class XtbClientAsyncTest : TestCase() {
     @Throws(ExecutionException::class, InterruptedException::class)
     fun testSubscribeGetTicketPriceReturnedResponse() {
         val requestedSymbol = "EURPLN"
-        xtbService!!.subscribeGetTicketPrice(requestedSymbol).get()
+        xtbService!!.subscribeGetTicketPrice(requestedSymbol)[shortTaskTimeout, TimeUnit.SECONDS]
         val queue = xtbService!!.subscriptionResponsesQueue
         val executor = Executors.newSingleThreadExecutor()
         val completableFuture = CompletableFuture<Boolean>()
@@ -148,13 +154,13 @@ open class XtbClientAsyncTest : TestCase() {
 
     @Throws(ExecutionException::class, InterruptedException::class)
     fun testSubscribeGetKeepAliveStarted() {
-        val isStarted = xtbService!!.subscribeGetKeepAlive()[20, TimeUnit.SECONDS]
+        val isStarted = xtbService!!.subscribeGetKeepAlive()[5, TimeUnit.SECONDS]
         assertTrue(isStarted)
     }
 
     // TODO this test should be rewritten
     fun testGetAllSymbolsAndSubscribe10FirstAndWaitFor10Responses() {
-        val allSymbols = xtbService!!.getAllSymbolsAsync().get()
+        val allSymbols = xtbService!!.getAllSymbolsAsync()[longTaskTimeout, TimeUnit.SECONDS]
 
         var i = 0
         while (i < 25) {
@@ -180,7 +186,7 @@ open class XtbClientAsyncTest : TestCase() {
     // TODO this test should be rewritten
     @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
     fun testSubscribeGetKeepAliveReturnedTwoResponses() {
-        xtbService!!.subscribeGetKeepAlive().get()
+        xtbService!!.subscribeGetKeepAlive()[shortTaskTimeout, TimeUnit.SECONDS]
         val queue = xtbService!!.subscriptionResponsesQueue
         val executor = Executors.newSingleThreadExecutor()
         val completableFuture = CompletableFuture<Boolean>()

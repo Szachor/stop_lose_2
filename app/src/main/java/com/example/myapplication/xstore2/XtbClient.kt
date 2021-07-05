@@ -9,12 +9,10 @@ import java.io.IOException
 import java.util.concurrent.LinkedBlockingQueue
 
 
-// TODO Create class for different services: Prod, Test, Mock
-
 
 // TODO Apply requirements about request limits:
 // Request should be sent in 200ms internals. This rule can be broken 5 times in row.
-open class XtbClient(private val login: String?, private val password: String?) {
+open class XtbClient {
     protected var stopListening = false
 
     // This WebSocket for main connection
@@ -46,14 +44,14 @@ open class XtbClient(private val login: String?, private val password: String?) 
     }
 
     @Throws(JSONException::class)
-    open fun connect(): Boolean {
+    open fun connect(login: String, password: String, connectionType: ConnectionType): Boolean {
         if (isConnected) {
             return true
         }
         try {
-            webSocket = XtbWebSocket(false)
-            streamingWebSocket = XtbWebSocket(true)
-            login()
+            webSocket = XtbWebSocket.createWebSocket(connectionType, isStreamingWebSocket = false)
+            streamingWebSocket = XtbWebSocket.createWebSocket(connectionType, isStreamingWebSocket = true)
+            login(login, password)
             stopListening = false
         }
         catch (exception: IOException){
@@ -79,9 +77,10 @@ open class XtbClient(private val login: String?, private val password: String?) 
     }
 
     @Throws(JSONException::class)
-    protected fun login() {
-        val response = processMessage(XtbServiceBodyMessageBuilder.getLoginMessage(login!!,
-            password!!
+    protected fun login(login: String, password: String) {
+        val response = processMessage(XtbServiceBodyMessageBuilder.getLoginMessage(
+            login,
+            password
         ))
         streamSessionId = JSONObject(response).getString("streamSessionId")
     }

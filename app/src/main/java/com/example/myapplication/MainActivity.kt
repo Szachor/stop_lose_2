@@ -9,6 +9,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import com.example.myapplication.databinding.ActivityMainBinding
+import com.example.myapplication.xstore2.ConnectionType
 import com.example.myapplication.xstore2.XtbClientAsync
 import com.example.myapplication.xstore2.XtbService
 
@@ -58,8 +59,9 @@ class MainActivity : AppCompatActivity() {
 
         serviceIntent.putExtra("inputExtra", "Foreground Service Example in Android")
         startService(serviceIntent)
-        val login = "12263751"
-        val password = "xoh26561"
-        val x = XtbClientAsync(login, password)
+        val login = "12366113"
+        val password = "xoh17653"
+        val x = XtbClientAsync()
+        x.connectAsync(login, password, ConnectionType.TEST)
     }
 }

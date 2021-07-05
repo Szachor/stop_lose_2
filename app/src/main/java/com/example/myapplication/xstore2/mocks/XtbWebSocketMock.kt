@@ -10,7 +10,7 @@ import java.util.concurrent.LinkedBlockingQueue
 internal class XtbWebSocketMock :
     WebSocket() {
 
-    var xtbWebSocketMockSettings= XtbWebSocketMockSettings()
+    var xtbWebSocketMockSettings= XtbMockServer
         private set
 
     private val responses = LinkedBlockingQueue<String>()

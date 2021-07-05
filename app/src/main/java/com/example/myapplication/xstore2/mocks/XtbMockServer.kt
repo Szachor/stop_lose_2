@@ -1,15 +1,13 @@
 package com.example.myapplication.xstore2.mocks
 
-import android.os.SystemClock
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
-import java.util.*
-import java.util.concurrent.LinkedBlockingQueue
 import kotlin.collections.HashMap
 
-internal class XtbWebSocketMockSettings() {
+object XtbMockServer {
     private var symbolsBehaviours: MutableMap<String, SymbolBehaviour> = HashMap()
+
+    fun cleanSymbolBehaviours(){
+        symbolsBehaviours = HashMap()
+    }
 
     fun getSymbolBehaviour(symbol: String): SymbolBehaviour {
         return symbolsBehaviours[symbol]!!
@@ -35,6 +33,27 @@ internal class XtbWebSocketMockSettings() {
                 cycleTimeInSeconds,
                 numberOfUpdatesInOneCycle
             )
+        )
+    }
+
+    fun generateDefaultSymbolBehaviour(symbol: String = "EURPLN", cycleTimeInSeconds: Int = 10, numberOfUpdatesInOneCycle: Int = 100) {
+        val startTick = TickPrice(10.1, 100, 9.9, 100)
+        setStartSymbolBehaviour(symbol, tickPrice = startTick)
+
+        var nextTick = TickPrice(20.0, 1000, 20.0, 1000)
+        addNextSymbolsBehaviour(
+            symbol,
+            tickPrice = nextTick,
+            cycleTimeInSeconds = cycleTimeInSeconds,
+            numberOfUpdatesInOneCycle = numberOfUpdatesInOneCycle
+        )
+
+        nextTick = TickPrice(50.0, 1000, 50.0, 1000)
+        addNextSymbolsBehaviour(
+            symbol,
+            tickPrice = nextTick,
+            cycleTimeInSeconds = cycleTimeInSeconds,
+            numberOfUpdatesInOneCycle = numberOfUpdatesInOneCycle
         )
     }
 }

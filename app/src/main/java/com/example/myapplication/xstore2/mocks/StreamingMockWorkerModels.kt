@@ -3,7 +3,7 @@ package com.example.myapplication.xstore2.mocks
 import java.util.*
 
 
-internal class TickPrice(
+class TickPrice(
     var ask: Double,
     var askVolume: Int,
     var bid: Double,
@@ -27,13 +27,13 @@ internal class TickPrice(
     }
 }
 
-internal class SymbolBehaviour(
+class SymbolBehaviour(
     var startTickPrice: TickPrice
 ) {
     var tickPriceSteps: LinkedList<TickPriceStep> = LinkedList<TickPriceStep>()
 }
 
-internal class TickPriceStep(
+class TickPriceStep(
     var tickPrice: TickPrice,
     var cycleTimeInSeconds: Int,
     var numberOfUpdatesInOneCycle: Int
