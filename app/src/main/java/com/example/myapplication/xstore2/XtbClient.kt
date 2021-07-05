@@ -8,19 +8,15 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.LinkedBlockingQueue
 
-
-
-// TODO Apply requirements about request limits:
-// Request should be sent in 200ms internals. This rule can be broken 5 times in row.
 open class XtbClient {
-    protected var stopListening = false
+    private var stopListening = false
 
     // This WebSocket for main connection
     // It is used for the Request-Reply commands.
-    internal var webSocket: WebSocket? = null
+    private var webSocket: WebSocket? = null
 
     // This WebSocket is used for streaming methods
-    internal var streamingWebSocket: WebSocket? = null
+    private var streamingWebSocket: WebSocket? = null
 
     val subscriptionResponses = LinkedBlockingQueue<JSONObject>()
 

@@ -21,8 +21,8 @@ import java.util.concurrent.*
 // TODO create annotation that user need to be logged/connected to run this method
 // #TODO Base on the customTag value from XTB response the response should be properly returned/mapped
 open class XtbClientAsync {
-    internal lateinit var xtbClient: XtbClient
-    internal val executor: ExecutorService = Executors.newSingleThreadExecutor()
+    private lateinit var xtbClient: XtbClient
+    private val executor: ExecutorService = Executors.newSingleThreadExecutor()
 
     open fun connectAsync(login: String, password: String, connectionType: ConnectionType): Future<Boolean> {
         xtbClient = XtbClient()
