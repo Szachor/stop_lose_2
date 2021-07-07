@@ -39,10 +39,12 @@ open class XtbClient {
         getSymbolResponseAdapter = moshi.adapter(GetSymbolResponse::class.java)
         getAllSymbolsResponseAdapter = moshi.adapter(GetAllSymbolsResponse::class.java)
         getTickPricesResponseAdapter = moshi.adapter(GetTickPricesResponse::class.java)
-        getTickPricesStreamingResponseAdapter = moshi.adapter(GetTickPricesStreamingResponse::class.java)
+        getTickPricesStreamingResponseAdapter =
+            moshi.adapter(GetTickPricesStreamingResponse::class.java)
 
     }
 
+    // TODO handle bad password or not access
     @Throws(JSONException::class)
     open fun connect(login: String, password: String, connectionType: ConnectionType): Boolean {
         if (isConnected) {
@@ -52,6 +54,7 @@ open class XtbClient {
             webSocket = XtbWebSocket.createWebSocket(connectionType, isStreamingWebSocket = false)
             streamingWebSocket =
                 XtbWebSocket.createWebSocket(connectionType, isStreamingWebSocket = true)
+            // TODO maybe login should be moved somewhere else
             login(login, password)
             stopListening = false
         } catch (exception: IOException) {
@@ -102,40 +105,19 @@ open class XtbClient {
         val runnable = Runnable {
             var responseString = ""
             while (!stopListening && isConnected) {
-                var response: JSONObject
                 try {
                     responseString = getResponse(streamingWebSocket!!)
-                    response = JSONObject(responseString)
-                    if (!response.has("Error")) {
-                        val commandName = response.getString("command")
-                        println("Streaming feed: received $commandName feed")
-                        when(commandName) {
-                            "tickPrices" -> {
-                                val tickPricesReturnData =
-                                    getTickPricesStreamingResponseAdapter.fromJson(responseString)!!.data
-                                subscriptionTickPricesResponses.put(tickPricesReturnData)
-                            }
-                            "keepAlive" -> {
-                                subscriptionKeepAliveResponses.put(
-                                    response.getJSONObject("data").getLong("timestamp")
-                                )
-                            }
-                            else -> {
-                                subscriptionResponses.put(JSONObject(response.toString()))
-                            }
-                        }
-                    }
+                    handleStreamingResponse(responseString)
                 } catch (e: IOException) {
                     if (!stopListening) {
                         throw e
                     } else {
                         println("Lost connection: The connection killed by user by setting flag stopListening")
                     }
-                } catch (e: JsonDataException){
+                } catch (e: JsonDataException) {
                     println("Couldn't parse JSON: $responseString")
                     e.printStackTrace()
-                }
-                catch (e: JSONException) {
+                } catch (e: JSONException) {
                     println("Couldn't parse JSON: $responseString")
                     e.printStackTrace()
                 } catch (e: InterruptedException) {
@@ -145,6 +127,32 @@ open class XtbClient {
         }
         val t = Thread(runnable)
         t.start()
+    }
+
+    // TODO Create adapter for general response with Command, Error and DATA
+    // Rewrite the logic of this method.
+    // Probably should use JsonAdapter to map to base model than base on the command value use another adapter to map value form Data to proper class
+    private fun handleStreamingResponse(responseString: String) {
+        val response = JSONObject(responseString)
+        if (!response.has("Error")) {
+            val commandName = response.getString("command")
+            println("Streaming feed: received $commandName feed")
+            when (commandName) {
+                "tickPrices" -> {
+                    val tickPricesReturnData =
+                        getTickPricesStreamingResponseAdapter.fromJson(responseString)!!.data
+                    subscriptionTickPricesResponses.put(tickPricesReturnData)
+                }
+                "keepAlive" -> {
+                    subscriptionKeepAliveResponses.put(
+                        response.getJSONObject("data").getLong("timestamp")
+                    )
+                }
+                else -> {
+                    subscriptionResponses.put(JSONObject(response.toString()))
+                }
+            }
+        }
     }
 
     @Throws(JSONException::class)
