@@ -89,38 +89,25 @@ open class XtbClientMockAsyncTest : TestCase() {
         assertTrue(isStarted)
     }
 
-    @Throws(ExecutionException::class, InterruptedException::class, TimeoutException::class)
-    fun testSubscribeGetTicketPriceReturnedTwoResponses() {
+    @Throws(ExecutionException::class, InterruptedException::class)
+    fun testSubscribeGetTicketPriceReturnedResponse() {
         XtbMockServer.generateDefaultSymbolBehaviour(
             "PLNUSD",
             cycleTimeInSeconds = 10,
             numberOfUpdatesInOneCycle = 3
         )
-        xtbClientAsync.subscribeGetTicketPrice("PLNUSD")[10, TimeUnit.SECONDS]
-        val queue = xtbClientAsync.subscriptionResponsesQueue
-        val executor = Executors.newSingleThreadExecutor()
-        val completableFuture = CompletableFuture<Boolean>()
-        executor.submit {
-            var i = 0
-            while (i < 4) {
-                try {
-                    val response = queue.take()
-                    if (response.getJSONObject("returnData").getString("symbol") != "PLNUSD") {
-                        throw Exception(
-                            """
-    Response seems not be OK. Expected command = getTickPrices in response, but could not find it.
-    Response: $response
-    """.trimIndent()
-                        )
-                    }
-                    i++
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-            completableFuture.complete(true)
+
+        val requestedSymbol = "PLNUSD"
+        xtbClientAsync.subscribeGetTicketPrice(requestedSymbol)[3, TimeUnit.SECONDS]
+        val queue = xtbClientAsync.responsesQueueForTicketPrices
+        val numberOfMinimalStreamResponses = 2
+        var numberOfSecondsFromStartListening = 0
+
+        while(queue.size < numberOfMinimalStreamResponses && numberOfSecondsFromStartListening++ < 20){
+            Thread.sleep(1000)
         }
-        val isThreadReturningResponses = completableFuture[1088, TimeUnit.SECONDS]
-        assertTrue(isThreadReturningResponses)
+
+        assertTrue(queue.size>=numberOfMinimalStreamResponses)
+        assertTrue(queue.take().symbol == requestedSymbol)
     }
 }

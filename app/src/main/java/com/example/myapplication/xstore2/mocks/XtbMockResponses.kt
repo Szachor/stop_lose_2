@@ -1,38 +1,5 @@
 package com.example.myapplication.xstore2.mocks
 
-import java.text.DecimalFormat
-
-
-internal class GetTickPricesResponse(
-    var ask: Double = 4000.0,
-    var askVolume: Int = 15000,
-    var bid: Double = 4000.0,
-    var bidVolume: Int = 16000,
-    var high: Double = 4000.0,
-    var level: Int = 0,
-    var low: Double = 3500.0,
-    var quoteId: Int = 0,
-    var spreadRaw: Double = 0.000003,
-    var spreadTable: Double = 0.00042,
-    var symbol: String = "KOMB.CZ"
-) {
-    constructor(tickPrice: TickPrice) : this() {
-
-    }
-    fun Double.format(digits: Int) = "%.${digits}f".format(this)
-
-    fun getStringResponse(): String {
-        val i = System.currentTimeMillis()
-        val df = DecimalFormat("#")
-
-        return """{"status": true, "returnData": 
-            {"ask": ${df.format(ask)}, "askVolume": ${df.format(askVolume)}, "bid": ${df.format(bid)}, "bidVolume": ${df.format(bidVolume)}, 
-            "high": ${df.format(high)}, "level": ${df.format(level)}, "low": ${df.format(low)}, "quoteId": ${df.format(quoteId)}, 
-            "spreadRaw": ${df.format(spreadRaw)}, "spreadTable": ${df.format(spreadTable)}, "symbol": $symbol, 
-            "timestamp": ${System.currentTimeMillis()} }}""".trimMargin()
-    }
-}
-
 internal class XtbMockResponses {
     companion object {
         fun getSymbolMockResponse(symbol: String) = """{"status":true,"returnData":

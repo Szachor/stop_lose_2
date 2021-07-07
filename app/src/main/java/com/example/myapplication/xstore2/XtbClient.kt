@@ -2,6 +2,7 @@ package com.example.myapplication.xstore2
 
 import com.example.myapplication.xstore2.model.*
 import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.JsonDataException
 import com.squareup.moshi.Moshi
 import org.json.JSONException
 import org.json.JSONObject
@@ -19,6 +20,8 @@ open class XtbClient {
     private var streamingWebSocket: WebSocket? = null
 
     val subscriptionResponses = LinkedBlockingQueue<JSONObject>()
+    val subscriptionTickPricesResponses = LinkedBlockingQueue<GetTickPricesReturnData>()
+    val subscriptionKeepAliveResponses = LinkedBlockingQueue<Long>()
 
     val isConnected: Boolean
         get() = if (webSocket == null) {
@@ -26,16 +29,17 @@ open class XtbClient {
         } else webSocket!!.isConnected
 
 
-
     private var getSymbolResponseAdapter: JsonAdapter<GetSymbolResponse>
     private var getTickPricesResponseAdapter: JsonAdapter<GetTickPricesResponse>
     private var getAllSymbolsResponseAdapter: JsonAdapter<GetAllSymbolsResponse>
+    private var getTickPricesStreamingResponseAdapter: JsonAdapter<GetTickPricesStreamingResponse>
 
     init {
         val moshi: Moshi = Moshi.Builder().build()
         getSymbolResponseAdapter = moshi.adapter(GetSymbolResponse::class.java)
         getAllSymbolsResponseAdapter = moshi.adapter(GetAllSymbolsResponse::class.java)
         getTickPricesResponseAdapter = moshi.adapter(GetTickPricesResponse::class.java)
+        getTickPricesStreamingResponseAdapter = moshi.adapter(GetTickPricesStreamingResponse::class.java)
 
     }
 
@@ -46,11 +50,11 @@ open class XtbClient {
         }
         try {
             webSocket = XtbWebSocket.createWebSocket(connectionType, isStreamingWebSocket = false)
-            streamingWebSocket = XtbWebSocket.createWebSocket(connectionType, isStreamingWebSocket = true)
+            streamingWebSocket =
+                XtbWebSocket.createWebSocket(connectionType, isStreamingWebSocket = true)
             login(login, password)
             stopListening = false
-        }
-        catch (exception: IOException){
+        } catch (exception: IOException) {
             exception.printStackTrace()
             return false
         }
@@ -74,10 +78,12 @@ open class XtbClient {
 
     @Throws(JSONException::class)
     protected fun login(login: String, password: String) {
-        val response = processMessage(XtbServiceBodyMessageBuilder.getLoginMessage(
-            login,
-            password
-        ))
+        val response = processMessage(
+            XtbServiceBodyMessageBuilder.getLoginMessage(
+                login,
+                password
+            )
+        )
         streamSessionId = JSONObject(response).getString("streamSessionId")
     }
 
@@ -88,30 +94,49 @@ open class XtbClient {
     }
 
     private fun getResponse(webSocket: WebSocket): String {
-        val response: String
-        try {
-            response = webSocket.getNextMessage()!!
-        } catch (exception: IOException) {
-            // Disconnected webSocket when thread was waiting for message
-            if (!stopListening) {
-                exception.printStackTrace()
-            }
-            return "Error: Lost connection"
-        }
-        return response
+        return webSocket.getNextMessage()!!
     }
 
+    // TODO Rewrite this function
     fun runSubscriptionStreamingReader() {
         val runnable = Runnable {
+            var responseString = ""
             while (!stopListening && isConnected) {
                 var response: JSONObject
                 try {
-                    val responseString = getResponse(streamingWebSocket!!)
+                    responseString = getResponse(streamingWebSocket!!)
                     response = JSONObject(responseString)
                     if (!response.has("Error")) {
-                        subscriptionResponses.put(JSONObject(response.toString()))
+                        val commandName = response.getString("command")
+                        println("Streaming feed: received $commandName feed")
+                        when(commandName) {
+                            "tickPrices" -> {
+                                val tickPricesReturnData =
+                                    getTickPricesStreamingResponseAdapter.fromJson(responseString)!!.data
+                                subscriptionTickPricesResponses.put(tickPricesReturnData)
+                            }
+                            "keepAlive" -> {
+                                subscriptionKeepAliveResponses.put(
+                                    response.getJSONObject("data").getLong("timestamp")
+                                )
+                            }
+                            else -> {
+                                subscriptionResponses.put(JSONObject(response.toString()))
+                            }
+                        }
                     }
-                } catch (e: JSONException) {
+                } catch (e: IOException) {
+                    if (!stopListening) {
+                        throw e
+                    } else {
+                        println("Lost connection: The connection killed by user by setting flag stopListening")
+                    }
+                } catch (e: JsonDataException){
+                    println("Couldn't parse JSON: $responseString")
+                    e.printStackTrace()
+                }
+                catch (e: JSONException) {
+                    println("Couldn't parse JSON: $responseString")
                     e.printStackTrace()
                 } catch (e: InterruptedException) {
                     e.printStackTrace()
@@ -158,14 +183,14 @@ open class XtbClient {
     fun getSymbol(symbol: String): GetSymbolResponseReturnData {
         val responseString = processMessage(XtbServiceBodyMessageBuilder.getSymbolMessage(symbol))
         val responseObject = getSymbolResponseAdapter.fromJson(responseString)
-        if(responseObject!!.errorCode == "BE115") throw NotFoundSymbol()
+        if (responseObject!!.errorCode == "BE115") throw NotFoundSymbol()
         return responseObject.returnData!!
     }
 
     fun subscribeGetKeepAlive() {
         val streamingWebSocket = streamingWebSocket
         streamingWebSocket!!.sendMessage(
-            XtbServiceBodyMessageBuilder.getKeepAliveMessage(
+            XtbServiceBodyMessageBuilder.getKeepAliveStreamingMessage(
                 streamSessionId!!
             )
         )
@@ -198,12 +223,12 @@ internal object XtbServiceBodyMessageBuilder {
 
     fun getAllSymbolsMessage(): String = """{"command": "getAllSymbols"}"""
 
-    fun getKeepAliveMessage(streamSessionId: String?): String {
-        return """{"command" : "getKeepAlive","streamSessionId" : "$streamSessionId"}"""
+    fun getKeepAliveStreamingMessage(streamSessionId: String?): String {
+        return """{"command" : "getKeepAlive","streamSessionId" : "$streamSessionId", "customTag": "KeepAliveCommand"} """
     }
 
     fun getTickPricesStreamingMessage(streamSessionId: String?, symbol: String?): String {
-        return """{"command" : "getTickPrices","streamSessionId" : "$streamSessionId","symbol": "$symbol"}"""
+        return """{"command" : "getTickPrices","streamSessionId" : "$streamSessionId","symbol": "$symbol", "customTag": "TickPricesCommand"} """
     }
 
     fun getPingJsonMessage(): String = """{"command": "ping"}"""
@@ -212,7 +237,7 @@ internal object XtbServiceBodyMessageBuilder {
         return """{"command": "getSymbol","arguments": {"symbol": "$symbol"}}"""
     }
 
-    // System.currentTimeMillis()-10000
+    // "timestamp": 1 is correct value
     // At the beginning I was using timestamp: System.currentTimeMillis() -> but it was not working, XTB returned no data
     // I was trying also System.currentTimeMillis()-10000 -> in result sometimes I was receiving some data, sometimes no
     // ${System.currentTimeMillis()-1000000 seems that it almost always returns data in XTB working hours
@@ -231,4 +256,5 @@ internal object XtbServiceBodyMessageBuilder {
         return """{"command": "getProfitCalculation","arguments": {"closePrice": $closePrice,"cmd": $cmd,"openPrice": $openPrice,"symbol": "$symbol","volume": $volume}}"""
     }
 }
-class NotFoundSymbol: Exception()
+
+class NotFoundSymbol : Exception()

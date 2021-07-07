@@ -60,8 +60,8 @@ internal open class WebSocket {
             // Without calling isOutputShutdown the "socketReader.readLine()" method blocks thread (without possibility to close)
             // With isOutputShutdown the "socketReader.readLine()" method returns null if socket is closed
             // In both cases isOutputShutdown returns false
-            var x1 = socketClient!!.isOutputShutdown
-            val line = socketReader.readLine() ?: throw IOException("OutputShutdown Exception - probably webSocket closed by server")
+            socketClient!!.isOutputShutdown
+            val line = socketReader.readLine() ?: throw IOException("OutputShutdown Exception - probably webSocket closed by server. Possible reasons: client sent bad JSON")
             response.append(line)
         } while (line == "")
         return response.toString()

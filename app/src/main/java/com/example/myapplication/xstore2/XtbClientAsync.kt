@@ -1,5 +1,6 @@
 package com.example.myapplication.xstore2
 
+import com.example.myapplication.xstore2.mocks.TickPrice
 import com.example.myapplication.xstore2.model.GetSymbolResponseReturnData
 import com.example.myapplication.xstore2.model.GetTickPricesReturnData
 import org.json.JSONObject
@@ -11,23 +12,24 @@ import java.util.concurrent.*
  * At most 50 simultaneous connections from the same client address are allowed (an attempt to obtain the 51st connection returns the error EX008). If you need this rule can be lenified please contact the xStore Support Team.
  * Every new connection that fails to deliver data within one second from when it is established may be forced to close with no notification.
  * Each command invocation should not contain more than 1kB of data.
- * User should send requests in 200 ms intervals. This rule can be broken, but if it happens 6 times in a row the connection is dropped.
- *
  * */
 /*interface MyInterface {
     Boolean doSomething() throws JSONException, IOException;
 }*/
 
-// TODO create annotation that user need to be logged/connected to run this method
-// #TODO Base on the customTag value from XTB response the response should be properly returned/mapped
 open class XtbClientAsync {
     private lateinit var xtbClient: XtbClient
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
 
+    fun throwErrorIfNotConnected(){
+        if(!xtbClient.isConnected){
+            throw ClientNotConnected("The client service need to be connected to run this method")
+        }
+    }
+
     open fun connectAsync(login: String, password: String, connectionType: ConnectionType): Future<Boolean> {
         xtbClient = XtbClient()
         val completableFuture = CompletableFuture<Boolean>()
-        //MyInterface myInterface = xtbService::connect;
         executor.submit {
             try {
                 completableFuture.complete(xtbClient.connect(login, password, connectionType = connectionType))
@@ -40,27 +42,14 @@ open class XtbClientAsync {
     }
 
     fun disconnectAsync(): Future<Boolean> {
+        throwErrorIfNotConnected()
         val completableFuture = CompletableFuture<Boolean>()
         executor.submit { completableFuture.complete(xtbClient.disconnect()) }
         return completableFuture
     }
 
-    /*
-    public Future<JSONObject> runAsyncTask(){
-        CompletableFuture<JSONObject> completableFuture = new CompletableFuture<>();
-
-        executor.submit(() -> {
-            try {
-                completableFuture.complete(xtbService.getAllSymbols());
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        });
-
-        return completableFuture;
-    }*/
-
     fun getAllSymbolsAsync(): Future<List<GetSymbolResponseReturnData>> {
+        throwErrorIfNotConnected()
         val completableFuture = CompletableFuture<List<GetSymbolResponseReturnData>>()
         executor.submit {
             try {
@@ -73,6 +62,7 @@ open class XtbClientAsync {
     }
 
     fun getSymbolAsync(symbol: String): CompletableFuture<GetSymbolResponseReturnData> {
+        throwErrorIfNotConnected()
         val completableFuture = CompletableFuture<GetSymbolResponseReturnData>()
         executor.submit {
             try {
@@ -87,6 +77,7 @@ open class XtbClientAsync {
     }
 
     fun getTickPricesAsync(symbol: String): Future<List<GetTickPricesReturnData>> {
+        throwErrorIfNotConnected()
         val completableFuture = CompletableFuture<List<GetTickPricesReturnData>>()
         executor.submit {
             try {
@@ -100,6 +91,7 @@ open class XtbClientAsync {
 
     // #TODO Change JSONObject to structured response
     fun getPingAsync(): Future<JSONObject> {
+        throwErrorIfNotConnected()
         val completableFuture = CompletableFuture<JSONObject>()
         executor.submit {
             try {
@@ -119,6 +111,7 @@ open class XtbClientAsync {
         symbol: String?,
         volume: Float
     ): Future<JSONObject> {
+        throwErrorIfNotConnected()
         val completableFuture = CompletableFuture<JSONObject>()
         executor.submit {
             try {
@@ -139,6 +132,7 @@ open class XtbClientAsync {
     }
 
     fun subscribeGetTicketPrice(symbol: String): Future<Boolean> {
+        throwErrorIfNotConnected()
         val completableFuture = CompletableFuture<Boolean>()
         executor.submit {
             if (xtbClient.isConnected) {
@@ -156,6 +150,7 @@ open class XtbClientAsync {
     }
 
     fun subscribeGetKeepAlive(): Future<Boolean> {
+        throwErrorIfNotConnected()
         val completableFuture = CompletableFuture<Boolean>()
         executor.submit {
             xtbClient.subscribeGetKeepAlive()
@@ -164,11 +159,31 @@ open class XtbClientAsync {
         return completableFuture
     }
 
+    val responsesQueueForTicketPrices: LinkedBlockingQueue<GetTickPricesReturnData>
+        get() {
+            throwErrorIfNotConnected()
+            xtbClient.runSubscriptionStreamingReader()
+            return xtbClient.subscriptionTickPricesResponses
+        }
+
+    val responsesQueueForKeepAlive: LinkedBlockingQueue<Long>
+        get() {
+            throwErrorIfNotConnected()
+            xtbClient.runSubscriptionStreamingReader()
+            return xtbClient.subscriptionKeepAliveResponses
+        }
+
+
+    /* To get responses from subscription use responsesQueueForTicketPrices or responsesQueueForKeepAlive.
+    This queue contains only not recognised responses.
+    * */
     val subscriptionResponsesQueue: LinkedBlockingQueue<JSONObject>
         get() {
+            throwErrorIfNotConnected()
             xtbClient.runSubscriptionStreamingReader()
             return xtbClient.subscriptionResponses
         }
+
     val isConnected: Future<Boolean>
         get() {
             val completableFuture = CompletableFuture<Boolean>()
@@ -176,3 +191,5 @@ open class XtbClientAsync {
             return completableFuture
         }
 }
+
+class ClientNotConnected(s: String) : Exception(s)

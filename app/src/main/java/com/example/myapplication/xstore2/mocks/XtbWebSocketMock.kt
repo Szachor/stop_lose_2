@@ -3,15 +3,13 @@ package com.example.myapplication.xstore2.mocks
 import com.example.myapplication.xstore2.WebSocket
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.IOException
 import java.util.concurrent.LinkedBlockingQueue
 
 
 internal class XtbWebSocketMock :
     WebSocket() {
 
-    var xtbWebSocketMockSettings= XtbMockServer
-        private set
+    private var xtbWebSocketMockSettings= XtbMockServer
 
     private val responses = LinkedBlockingQueue<String>()
 
@@ -20,6 +18,7 @@ internal class XtbWebSocketMock :
             val jsonMessage = JSONObject(message.toString())
             when (val command = jsonMessage.getString("command")) {
                 "login" -> {
+                    // TODO Should be moved to other responses
                     val loginResponse =
                         """{"status": true, "streamSessionId": "8469308861804289383"}"""
                     responses.put(loginResponse)
@@ -66,14 +65,8 @@ internal class XtbWebSocketMock :
         responses.put(json)
     }
 
-    @Throws(JSONException::class, IOException::class)
     override fun getNextMessage(): String {
-        try {
-            return responses.take()
-        } catch (e: InterruptedException) {
-            e.printStackTrace()
-        }
-        return ""
+        return responses.take()
     }
 
     override var isConnected = true
